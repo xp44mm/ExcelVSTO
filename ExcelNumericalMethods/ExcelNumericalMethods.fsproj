@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework> 
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Apostrophe.fs" />
+    <Compile Include="Quotation.fs" />
+    <Compile Include="Traversal.fs" />
+    <Compile Include="Prune.fs" />
+    <Compile Include="NumericalMethods.fs" />
+    <Compile Include="RootsOfEquations.fs" />
+    <Compile Include="ValidationFormula.fs" />
+    <Compile Include="NameOps.fs" />
+    <Compile Include="WorksheetOps.fs" />
+    <Compile Include="RenderFSharp.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExcelCompiler" Version="1.1.14" />
+    <PackageReference Include="FSharp.Idioms" Version="1.4.9" />
+    <PackageReference Include="FSharp.xUnit" Version="1.2.21" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.Office.Interop.Excel">
+      <HintPath>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Visual Studio Tools for Office\PIA\Office15\Microsoft.Office.Interop.Excel.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="8.0.100" />
+  </ItemGroup>
+</Project>

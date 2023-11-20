@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.452
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelVSTO", "ExcelVSTO\ExcelVSTO.csproj", "{BEACC6CA-495D-4CB0-81DD-8C950ED51DA8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelWPF", "ExcelWPF\ExcelWPF.csproj", "{83EE02DA-F667-4D6C-B780-7228477674FA}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ExcelNumericalMethods", "ExcelNumericalMethods\ExcelNumericalMethods.fsproj", "{64E01905-DA81-447E-ADB3-10D2DAC1110C}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ExcelNumericalMethods.Test", "ExcelNumericalMethods.Test\ExcelNumericalMethods.Test.fsproj", "{AE916A9B-DA10-42CF-A371-31F64288F765}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BEACC6CA-495D-4CB0-81DD-8C950ED51DA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEACC6CA-495D-4CB0-81DD-8C950ED51DA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEACC6CA-495D-4CB0-81DD-8C950ED51DA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEACC6CA-495D-4CB0-81DD-8C950ED51DA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83EE02DA-F667-4D6C-B780-7228477674FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83EE02DA-F667-4D6C-B780-7228477674FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83EE02DA-F667-4D6C-B780-7228477674FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83EE02DA-F667-4D6C-B780-7228477674FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64E01905-DA81-447E-ADB3-10D2DAC1110C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64E01905-DA81-447E-ADB3-10D2DAC1110C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64E01905-DA81-447E-ADB3-10D2DAC1110C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64E01905-DA81-447E-ADB3-10D2DAC1110C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE916A9B-DA10-42CF-A371-31F64288F765}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE916A9B-DA10-42CF-A371-31F64288F765}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE916A9B-DA10-42CF-A371-31F64288F765}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE916A9B-DA10-42CF-A371-31F64288F765}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {710129B0-903D-4B67-9FED-D5B9B9D6C3BC}
+	EndGlobalSection
+EndGlobal

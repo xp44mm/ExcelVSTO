@@ -1,9 +1,9 @@
 ﻿module ExcelNumericalMethods.RenderFSharp
 
 open Microsoft.Office.Interop.Excel
-open ExcelCompiler
 open FSharp.Idioms
 
+open ExcelCompiler
 let getFsharp (cell:Range) =
     let addr = cell.get_Address().Replace("$","")
 

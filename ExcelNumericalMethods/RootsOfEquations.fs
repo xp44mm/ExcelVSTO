@@ -1,9 +1,9 @@
 ﻿module ExcelNumericalMethods.RootsOfEquations
 
 open Microsoft.Office.Interop.Excel
-open ExcelCompiler
 open FSharp.Idioms
 
+open ExcelCompiler
 let friendAddress(cell: Range) = 
     sprintf "%s!%s" cell.Worksheet.Name (cell.Address())
 

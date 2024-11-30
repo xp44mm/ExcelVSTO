@@ -2,10 +2,10 @@
 
 open System
 
-open ExcelCompiler
 open FSharp.Idioms
 open FSharp.Idioms.StringOps
-open FslexFsyacc.Runtime
+open FslexFsyacc
+open ExcelCompiler
 
 ///公式变小括号
 let parenthesis (tokens:ExcelToken[]) =

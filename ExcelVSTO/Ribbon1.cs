@@ -110,7 +110,7 @@ namespace ExcelVSTO
             var goalCell = Globals.ThisAddIn.Application.ActiveCell;
             try
             {
-                RootsOfEquations.successive(goalCell);
+                //RootsOfEquations.successive(goalCell);
             }
             catch (Exception ex)
             {
@@ -122,8 +122,8 @@ namespace ExcelVSTO
         {
             try
             {
-                var goalCell = Globals.ThisAddIn.Application.ActiveCell;
-                RootsOfEquations.bisect(goalCell);
+                //var goalCell = Globals.ThisAddIn.Application.ActiveCell;
+                //RootsOfEquations.bisect(goalCell);
             }
             catch (Exception ex)
             {
@@ -133,154 +133,154 @@ namespace ExcelVSTO
 
         private void deprecatedFormulae_Click(Object sender, RibbonControlEventArgs e)
         {
-            var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-            var result =
-                ValidationFormula.validate(wb)
-                .Select(tpl => tpl.Item1 + tpl.Item2 + tpl.Item3)
-                .ToArray()
-                ;
+            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
+            //var result =
+            //    ValidationFormula.validate(wb)
+            //    .Select(tpl => tpl.Item1 + tpl.Item2 + tpl.Item3)
+            //    .ToArray()
+            //    ;
 
-            if (result.Length == 0)
-            {
-                MessageBox.Show("当前工作簿公式都支持！");
-            }
-            else
-            {
-                var text = String.Join(Environment.NewLine, result);
-                var dlg = new TextWindow("不支持的公式", text);
-                dlg.ShowDialog();
-            }
+            //if (result.Length == 0)
+            //{
+            //    MessageBox.Show("当前工作簿公式都支持！");
+            //}
+            //else
+            //{
+            //    var text = String.Join(Environment.NewLine, result);
+            //    var dlg = new TextWindow("不支持的公式", text);
+            //    dlg.ShowDialog();
+            //}
 
         }
 
         private void clearName_button_Click(object sender, RibbonControlEventArgs e)
         {
-            var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
+            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
 
-            var names = wb.Names
-                .Cast<Name>()
-                .Where(nm => nm.Visible)
-                .Select(nm => new Tuple<string, string>(nm.Name, (string)nm.RefersTo))
-                .ToArray()
-                ;
+            //var names = wb.Names
+            //    .Cast<Name>()
+            //    .Where(nm => nm.Visible)
+            //    .Select(nm => new Tuple<string, string>(nm.Name, (string)nm.RefersTo))
+            //    .ToArray()
+            //    ;
 
-            var cells =
-                wb.Worksheets
-                .Cast<Worksheet>()
-                .SelectMany(wsx =>
-                    Traversal.getCellsOfWorksheet(wsx)
-                    .Where(rg => (bool)rg.HasFormula)
-                    .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
-                )
-                .ToArray()
-                ;
+            //var cells =
+            //    wb.Worksheets
+            //    .Cast<Worksheet>()
+            //    .SelectMany(wsx =>
+            //        Traversal.getCellsOfWorksheet(wsx)
+            //        .Where(rg => (bool)rg.HasFormula)
+            //        .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
+            //    )
+            //    .ToArray()
+            //    ;
 
-            var result =
-                NameOps.replaceNames(names, cells)
-                .Select(tpl => $"Sheets({Quotation.quote(tpl.Item1)}).Range(\"{tpl.Item2}\").Formula = {Quotation.quote(tpl.Item3)}")
-                .ToArray()
-                ;
+            //var result =
+            //    NameOps.replaceNames(names, cells)
+            //    .Select(tpl => $"Sheets({Quotation.quote(tpl.Item1)}).Range(\"{tpl.Item2}\").Formula = {Quotation.quote(tpl.Item3)}")
+            //    .ToArray()
+            //    ;
 
-            if (result.Length == 0)
-            {
-                MessageBox.Show("当前工作簿没有使用的名称！");
-            }
-            else
-            {
-                var text = String.Join(Environment.NewLine, result);
-                var dlg = new TextWindow("清除名称", text);
-                dlg.ShowDialog();
+            //if (result.Length == 0)
+            //{
+            //    MessageBox.Show("当前工作簿没有使用的名称！");
+            //}
+            //else
+            //{
+            //    var text = String.Join(Environment.NewLine, result);
+            //    var dlg = new TextWindow("清除名称", text);
+            //    dlg.ShowDialog();
 
-            }
+            //}
 
         }
 
         private void btn_referencesOfWorksheet_Click(object sender, RibbonControlEventArgs e)
         {
-            var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
+            //var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
 
-            var cells =
-                Traversal.getCellsOfWorksheet(ws)
-                .Where(rg => (bool)rg.HasFormula)
-                .Select(rg => new Tuple<string, string>(rg.get_Address(), (string)rg.Formula))
-                .ToArray();
+            //var cells =
+            //    Traversal.getCellsOfWorksheet(ws)
+            //    .Where(rg => (bool)rg.HasFormula)
+            //    .Select(rg => new Tuple<string, string>(rg.get_Address(), (string)rg.Formula))
+            //    .ToArray();
 
-            var inputs =
-                WorksheetOps.references(ws.Name, cells)
-                .Select((tuple) => tuple.Item1 + tuple.Item2)
-                .ToArray();
+            //var inputs =
+            //    WorksheetOps.references(ws.Name, cells)
+            //    .Select((tuple) => tuple.Item1 + tuple.Item2)
+            //    .ToArray();
 
-            if (inputs.Length == 0)
-            {
-                MessageBox.Show("当前工作表没有引用其他工作表！");
-            }
-            else
-            {
-                var text = String.Join(Environment.NewLine, inputs);
-                var dlg = new TextWindow("工作表引用", text);
-                dlg.ShowDialog();
+            //if (inputs.Length == 0)
+            //{
+            //    MessageBox.Show("当前工作表没有引用其他工作表！");
+            //}
+            //else
+            //{
+            //    var text = String.Join(Environment.NewLine, inputs);
+            //    var dlg = new TextWindow("工作表引用", text);
+            //    dlg.ShowDialog();
 
-            }
+            //}
 
         }
 
         private void btn_dependentsOfWorksheet_Click(object sender, RibbonControlEventArgs e)
         {
-            var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-            var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
+            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
+            //var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
 
-            var cells = wb.Worksheets
-                .Cast<Worksheet>()
-                .Where(wsx => wsx.Name != ws.Name)
-                .SelectMany(wsx =>
-                    Traversal.getCellsOfWorksheet(wsx)
-                    .Where(rg => (bool)rg.HasFormula)
-                    .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
-                )
-                .ToArray();
+            //var cells = wb.Worksheets
+            //    .Cast<Worksheet>()
+            //    .Where(wsx => wsx.Name != ws.Name)
+            //    .SelectMany(wsx =>
+            //        Traversal.getCellsOfWorksheet(wsx)
+            //        .Where(rg => (bool)rg.HasFormula)
+            //        .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
+            //    )
+            //    .ToArray();
 
-            var result =
-                WorksheetOps.dependents(ws.Name, cells)
-                .Select((tuple) => tuple.Item1 + tuple.Item2 + tuple.Item3)
-                .ToArray();
+            //var result =
+            //    WorksheetOps.dependents(ws.Name, cells)
+            //    .Select((tuple) => tuple.Item1 + tuple.Item2 + tuple.Item3)
+            //    .ToArray();
 
-            if (result.Length == 0)
-            {
-                MessageBox.Show("当前工作表没有引用其他工作表！");
-            }
-            else
-            {
-                var text = String.Join(Environment.NewLine, result);
-                var dlg = new TextWindow("工作表依赖", text);
-                dlg.ShowDialog();
+            //if (result.Length == 0)
+            //{
+            //    MessageBox.Show("当前工作表没有引用其他工作表！");
+            //}
+            //else
+            //{
+            //    var text = String.Join(Environment.NewLine, result);
+            //    var dlg = new TextWindow("工作表依赖", text);
+            //    dlg.ShowDialog();
 
-            }
+            //}
 
 
         }
 
         private void btn_RenderFSharp_Click(object sender, RibbonControlEventArgs e)
         {
-            var sel = (Range)Globals.ThisAddIn.Application.Selection;
-            var cells =
-                Traversal.getCellsOfRange(sel)
-                .Where(cell => cell.Formula != null)
-                .Select(cell => RenderFSharp.getFsharp(cell))
-                .Select(tpl => String.Format("let {0} = {1}", tpl.Item1, tpl.Item2))
-                .ToArray()
-                ;
+            //var sel = (Range)Globals.ThisAddIn.Application.Selection;
+            //var cells =
+            //    Traversal.getCellsOfRange(sel)
+            //    .Where(cell => cell.Formula != null)
+            //    .Select(cell => RenderFSharp.getFsharp(cell))
+            //    .Select(tpl => String.Format("let {0} = {1}", tpl.Item1, tpl.Item2))
+            //    .ToArray()
+            //    ;
 
-            if (cells.Length == 0)
-            {
-                MessageBox.Show("请选择要生成代码的单元格！");
-            }
-            else
-            {
-                var text = String.Join(Environment.NewLine, cells);
-                var dlg = new TextWindow("FSharp代码", text);
-                dlg.ShowDialog();
+            //if (cells.Length == 0)
+            //{
+            //    MessageBox.Show("请选择要生成代码的单元格！");
+            //}
+            //else
+            //{
+            //    var text = String.Join(Environment.NewLine, cells);
+            //    var dlg = new TextWindow("FSharp代码", text);
+            //    dlg.ShowDialog();
 
-            }
+            //}
 
         }
     }

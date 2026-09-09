@@ -1,39 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <IsPackable>false</IsPackable>
-    <GenerateProgramFile>false</GenerateProgramFile>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="NameOpsTest.fs" />
-    <Compile Include="WorksheetOpsTest.fs" />
-    <Compile Include="PruneTest.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="NameOpsTest.fs" />
+        <Compile Include="WorksheetOpsTest.fs" />
+        <Compile Include="PruneTest.fs" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ExcelCompiler" Version="1.1.15" />
-    <PackageReference Include="FSharp.xUnit" Version="1.2.28" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="coverlet.collector" Version="6.0.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="FSharp.xUnit" Version="1.4.1" />
+        <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.0" />
+        <PackageReference Update="FSharp.Core" Version="10.1.302" />
 
-  <ItemGroup>
-    <ProjectReference Include="..\ExcelNumericalMethods\ExcelNumericalMethods.fsproj" />
-  </ItemGroup>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="9.0.100" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\ExcelNumericalMethods\ExcelNumericalMethods.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Update="FSharp.Core" Version="10.1.401" />
+    </ItemGroup>
 
 </Project>

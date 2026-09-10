@@ -188,16 +188,16 @@
             // 
             this.btnBisect.Label = "对分法归零";
             this.btnBisect.Name = "btnBisect";
-            this.btnBisect.ScreenTip = "选中单元格=(A+B)/2";
-            this.btnBisect.SuperTip = "选中单元格的R[1]为目标单元格，其值小于零修改A，大于零修改B";
+            this.btnBisect.ScreenTip = "平均单元格输入 =(A1+A2)/2，按符号缩小区间";
+            this.btnBisect.SuperTip = "选中平均单元格，公式应为 =(A1+A2)/2（只引用当前工作表的 A1 地址）。A1、A2 是区间上下界且必须是字面量；其下一行单元格为目标函数值，小于零则把 A1 更新为平均值，大于零则把 A2 更新为平均值。";
             this.btnBisect.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnBisect_Click);
             // 
             // btnSuccessive
             // 
             this.btnSuccessive.Label = "代入法归零";
             this.btnSuccessive.Name = "btnSuccessive";
-            this.btnSuccessive.ScreenTip = "选中单元格=A-B";
-            this.btnSuccessive.SuperTip = "do B <- A";
+            this.btnSuccessive.ScreenTip = "误差单元格输入 =A2-A1，A1 追成 A2";
+            this.btnSuccessive.SuperTip = "选中误差单元格，公式应为 =A2-A1（只引用当前工作表的 A1 地址）。A2 是新值，A1 是旧值且必须是字面量；点击后 A1 的值被更新为 A2 的值，使差值趋近于零。";
             this.btnSuccessive.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnSuccessive_Click);
             // 
             // group4

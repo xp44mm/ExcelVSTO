@@ -1,77 +1,52 @@
 ﻿module ExcelNumericalMethods.RootsOfEquations
 
 open Microsoft.Office.Interop.Excel
-open FSharp.Idioms
+open System.Text.RegularExpressions
 
-//open ExcelCompiler
-//let friendAddress(cell: Range) = 
-//    sprintf "%s!%s" cell.Worksheet.Name (cell.Address())
+///匹配当前工作表的A1形式单元格地址（如 A1、$A$1、A$1、$A1）。
+///列名限1~3个字母（A..XFD），因此形如名称、跨工作表、跨工作簿的引用都不会匹配。
+let successiveRgx = Regex(@"^=\s*(\$?[A-Za-z]{1,3}\$?\d+)\s*-\s*(\$?[A-Za-z]{1,3}\$?\d+)\s*$")
 
-//let parseCell(cell: Range) = 
-//    if unbox cell.HasArray then 
-//        failwithf "此单元格不应是数组公式，地址为:%s" (friendAddress cell)
-//    elif unbox cell.HasFormula then
-//        let expr = 
-//            let formula = unbox<string> cell.Formula
-//            formula.TrimStart('=')
-        
-//        ExcelFormulaString.parseToExpr expr
-//    else
-//        failwithf "此单元格应该是公式，地址为:%s" (friendAddress cell)
+let bisectRgx = Regex(@"^=\s*\(\s*(\$?[A-Za-z]{1,3}\$?\d+)\s*\+\s*(\$?[A-Za-z]{1,3}\$?\d+)\s*\)\s*/\s*2\s*$")
 
-///去单引号
-let deapos(s:string) =  s.[1..s.Length-2].Replace("''","'")
+///代入法追赶一次：目标单元格的减数等于被减数，后者追前者。
+///误差单元格应输入公式 =A2-A1，A2 是新值，A1 是旧值（必须是字面量），两者都在当前工作表。
+let successive (deltaCell: Range) =
+    if not (unbox deltaCell.HasFormula) then
+        failwith "误差单元格应该是公式，例如 =A2-A1"
+    let formula = unbox<string> deltaCell.Formula
+    let m = successiveRgx.Match(formula)
+    if not m.Success then
+        failwithf "公式应该为=A2-A1，且只引用当前工作表的A1地址: %s" formula
+    let ws = deltaCell.Worksheet
+    let targetCell = ws.Range(m.Groups.[1].Value) // new value
+    let changeCell = ws.Range(m.Groups.[2].Value) // old value
+    if unbox changeCell.HasFormula then
+        failwithf "输入值应该是字面量: %s" (changeCell.Address())
+    else
+        changeCell.Value2 <- targetCell.Value2
 
-///从公式中获取工作表的名称
-let smartDeapos (ws:string) =
-    if ws.StartsWith("'") then deapos ws else ws
+/// 执行一次对分法。
+///平均单元格应输入公式 =(A1+A2)/2，A1、A2 是上下界（必须是字面量），两者都在当前工作表。
+let bisect (averageCell: Range) =
+    if not (unbox averageCell.HasFormula) then
+        failwith "平均值单元格应该是公式，例如 =(A1+A2)/2"
+    let formula = unbox<string> averageCell.Formula
+    let m = bisectRgx.Match(formula)
+    if not m.Success then
+        failwithf "公式应该为=(A1+A2)/2，且只引用当前工作表的A1地址: %s" formula
+    let ws = averageCell.Worksheet
+    let cell1 = ws.Range(m.Groups.[1].Value)
+    let cell2 = ws.Range(m.Groups.[2].Value)
 
-///实例化工作表
-let getWorksheet (aws:Worksheet) (ws:string list) =
-    match ws with
-    | [] -> aws
-    | [ws] ->
-        let ws = smartDeapos ws
-        (aws.Parent :?> Workbook).Worksheets.[ws] :?> Worksheet
-    | _ -> failwithf "%A" ws
+    if unbox cell1.HasFormula then
+        failwithf "单元格应该输入数值，地址为：%s" (cell1.Address())
+    elif unbox cell2.HasFormula then
+        failwithf "单元格应该输入数值，地址为：%s" (cell2.Address())
+    else
+        //平均单元格下一行的单元格是目标单元格,我们希望目标单元格值为零。
+        let goalCell = averageCell.get_Offset(1, 0)
 
-let toRange (aws:Worksheet) (ws:string list) (addr:string) =
-    let ws = getWorksheet aws ws
-    ws.Range(addr)
-
-/////代入法追赶一次：目标单元格的减数等于被减数，后者追前者
-//let successive(deltaCell: Range) =
-//    match parseCell deltaCell with
-//    | Sub(Reference(ws0,[addr0]), Reference(ws1,[addr1])) ->
-//            let ws = deltaCell.Worksheet
-//            let targetCell = toRange ws ws0 addr0 // new value
-//            let changeCell = toRange ws ws1 addr1 // old value
-//            if unbox changeCell.HasFormula then
-//                failwithf "输入值应该是字面量: %s" (friendAddress changeCell)
-//            else
-//                changeCell.Value2 <- targetCell.Value2
-//    | _ ->
-//        failwithf "公式应该为=A2-A1, 误差单元格: %s" (friendAddress deltaCell)
-
-///// 执行一次对分法
-//let bisect(averageCell: Range) =
-//    match parseCell averageCell with
-//    | Div(Add(Reference(ws1,[addr1]),Reference(ws2,[addr2])),Number "2") ->
-//            let aws = averageCell.Worksheet
-//            let cell1 = toRange aws ws1 addr1
-//            let cell2 = toRange aws ws2 addr2
-
-//            if unbox cell1.HasFormula then
-//                failwithf "单元格应该输入数值，地址为：%s" (friendAddress cell1)
-//            elif unbox cell2.HasFormula then
-//                failwithf "单元格应该输入数值，地址为：%s" (friendAddress cell2)
-//            else
-//                //平均单元格下一行的单元格是目标单元格,我们希望目标单元格值为零。
-//                let goalCell = averageCell.get_Offset(1, 0)
-
-//                if unbox goalCell.Value2 < 0.0
-//                then cell1.Value2 <- averageCell.Value2 //如果目标单元格的值小于零，使前面单元格的值为平均单元格的值
-//                else cell2.Value2 <- averageCell.Value2 //如果目标单元格的值大于零，使后面单元格的值为平均单元格的值
-//    | _ ->
-//        failwithf "公式应该为=(A1+A2)/2, 单元格: %s" (friendAddress averageCell)
-
+        if unbox goalCell.Value2 < 0.0
+        then cell1.Value2 <- averageCell.Value2 //如果目标单元格的值小于零，使前面单元格的值为平均单元格的值
+        else cell2.Value2 <- averageCell.Value2 //如果目标单元格的值大于零，使后面单元格的值为平均单元格的值

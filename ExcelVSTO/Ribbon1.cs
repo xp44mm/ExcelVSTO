@@ -110,7 +110,7 @@ namespace ExcelVSTO
             var goalCell = Globals.ThisAddIn.Application.ActiveCell;
             try
             {
-                //RootsOfEquations.successive(goalCell);
+                RootsOfEquations.successive(goalCell);
             }
             catch (Exception ex)
             {
@@ -120,10 +120,10 @@ namespace ExcelVSTO
 
         private void BtnBisect_Click(object sender, RibbonControlEventArgs e)
         {
+            var goalCell = Globals.ThisAddIn.Application.ActiveCell;
             try
             {
-                //var goalCell = Globals.ThisAddIn.Application.ActiveCell;
-                //RootsOfEquations.bisect(goalCell);
+                RootsOfEquations.bisect(goalCell);
             }
             catch (Exception ex)
             {

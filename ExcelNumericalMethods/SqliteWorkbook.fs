@@ -12,15 +12,15 @@ open Microsoft.Office.Interop.Excel
 
 /// 建表 SQL（与解决方案根目录 create_excel_db.sql 保持一致）
 let createSchemaSql =
-    """CREATE TABLE IF NOT EXISTS Workbook (
+    """CREATE TABLE Workbook (
     name TEXT PRIMARY KEY
 );
-CREATE TABLE IF NOT EXISTS Worksheet (
+CREATE TABLE Worksheet (
     position INTEGER NOT NULL,
     name     TEXT NOT NULL UNIQUE,
     PRIMARY KEY (position)
 );
-CREATE TABLE IF NOT EXISTS Cell (
+CREATE TABLE Cell (
     worksheet TEXT NOT NULL REFERENCES Worksheet(name),
     row       INTEGER NOT NULL,
     col       INTEGER NOT NULL,

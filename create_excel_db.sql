@@ -6,17 +6,17 @@
 --   Worksheet 工作表的顺序和名称
 --   Cell      单元格：所在工作表、行地址、列地址、值、公式
 
-CREATE TABLE IF NOT EXISTS Workbook (
+CREATE TABLE Workbook (
     name TEXT PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS Worksheet (
+CREATE TABLE Worksheet (
     position INTEGER NOT NULL,      -- 工作表顺序，从 1 开始
     name     TEXT NOT NULL UNIQUE,  -- 工作表名称
     PRIMARY KEY (position)
 );
 
-CREATE TABLE IF NOT EXISTS Cell (
+CREATE TABLE Cell (
     worksheet TEXT NOT NULL REFERENCES Worksheet(name),
     row       INTEGER NOT NULL,     -- 行地址，从 1 开始
     col       INTEGER NOT NULL,     -- 列地址，从 1 开始

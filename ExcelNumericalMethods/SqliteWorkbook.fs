@@ -1,4 +1,8 @@
 ﻿///工作簿与 SQLite 数据库之间的相互转换
+///数据库结构见解决方案根目录的 create_excel_db.sql，共三张表：
+///  Workbook  工作簿的名称
+///  Worksheet 工作表的顺序和名称
+///  Cell      单元格：所在工作表、行地址、列地址、值、公式
 module ExcelNumericalMethods.SqliteWorkbook
 
 open System
@@ -6,16 +10,38 @@ open System.Data.SQLite
 open System.Globalization
 open Microsoft.Office.Interop.Excel
 
-/// 字符串转换为合法的 SQLite 标识符（表名、列名）
-let private sanitizeIdentifier (fallback: string) (name: string) =
-    let sb = System.Text.StringBuilder()
-    for ch in name do
-        if Char.IsLetterOrDigit ch || ch = '_' then
-            sb.Append ch |> ignore
-        else
-            sb.Append '_' |> ignore
-    let s = sb.ToString().Trim('_')
-    if String.IsNullOrEmpty s then fallback else s
+/// 建表 SQL（与解决方案根目录 create_excel_db.sql 保持一致）
+let createSchemaSql =
+    """CREATE TABLE IF NOT EXISTS Workbook (
+    name TEXT PRIMARY KEY
+);
+CREATE TABLE IF NOT EXISTS Worksheet (
+    position INTEGER NOT NULL,
+    name     TEXT NOT NULL UNIQUE,
+    PRIMARY KEY (position)
+);
+CREATE TABLE IF NOT EXISTS Cell (
+    worksheet TEXT NOT NULL REFERENCES Worksheet(name),
+    row       INTEGER NOT NULL,
+    col       INTEGER NOT NULL,
+    value     TEXT,
+    formula   TEXT,
+    PRIMARY KEY (worksheet, row, col)
+);"""
+
+/// 单元格值转换为数据库文本
+let private toText (v: obj) : string =
+    match v with
+    | null -> null
+    | :? DateTime as d -> d.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+    | :? bool as b -> if b then "1" else "0"
+    | :? double as f -> f.ToString("G17", CultureInfo.InvariantCulture)
+    | :? float32 as f -> (float f).ToString("G17", CultureInfo.InvariantCulture)
+    | :? int as i -> string i
+    | :? int64 as i -> string i
+    | :? decimal as m -> m.ToString(CultureInfo.InvariantCulture)
+    | :? string as s -> s
+    | other -> other.ToString()
 
 /// 在已用名称集合中生成不重复的名称
 let private uniqueName (used: Collections.Generic.HashSet<string>) (baseName: string) =
@@ -79,144 +105,56 @@ let private readValues (rg: Range) (rows: int) (cols: int) : obj[,] =
                 | _ -> ()
     arr
 
-/// 列类型
-type private ColumnType =
-    | Integer
-    | Real
-    | Text
-
-/// 判断 double 是否为整数
-let private isIntegral (d: double) = d = Math.Floor d && not (Double.IsInfinity d)
-
-/// 根据数据行推断每一列的类型（第一行是表头，不参与推断）
-let private inferColumnTypes (data: obj[,]) (rows: int) (cols: int) : ColumnType[] =
-    [|
-        for c in 1..cols do
-            let mutable t = Integer
-            for r in 2..rows do
-                match data.[r, c] with
-                | null -> ()
-                | :? string -> t <- Text
-                | :? DateTime -> t <- Text
-                | :? double as d when not (isIntegral d) ->
-                    if t = Integer then t <- Real
-                | _ -> ()
-            yield t
-    |]
-
-/// 单元格值转换为数据库参数值
-let private toDbValue (colType: ColumnType) (v: obj) : obj =
-    match v with
-    | null -> box DBNull.Value
-    | :? DateTime as d ->
-        // 日期统一存为 ISO 文本，保证可逆
-        box (d.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))
-    | :? bool as b ->
-        match colType with
-        | Text -> box (if b then "1" else "0")
-        | _ -> box (if b then 1 else 0)
-    | :? double as d ->
-        match colType with
-        | Integer when isIntegral d && d >= -9.2233720368547758E+18 && d <= 9.2233720368547758E+18 ->
-            box (int64 d)
-        | _ -> box d
-    | :? float32 as f -> box (float f)
-    | :? int as i -> box i
-    | :? int64 as i -> box i
-    | :? decimal as m -> box (double m)
-    | :? string as s -> box s
-    | other -> box (other.ToString())
-
-/// 将当前工作簿另存为 SQLite 数据库：每个工作表一张表，第一行为列名
-let saveWorkbookAs (path: string) (wb: Workbook) =
-    use conn = new SQLiteConnection("Data Source=" + path + ";Version=3;")
-    conn.Open()
-    use tran = conn.BeginTransaction()
-    let usedTableNames = Collections.Generic.HashSet<string>()
-    for ws in Traversal.getWorksheets wb do
-        let used = ws.UsedRange
-        let rows = used.Rows.Count
-        let cols = used.Columns.Count
-        if rows > 0 && cols > 0 then
-            let data = readValues used rows cols
-            // 整个区域为空则跳过
-            let mutable any = false
+/// 读取整个区域的公式，返回基于 1 的下标的 string[,]（无公式的单元格为 null）
+let private readFormulas (rg: Range) (rows: int) (cols: int) : string[,] =
+    let arr = Array2D.create (rows + 1) (cols + 1) null
+    if rows = 1 && cols = 1 then
+        let f = try (rg.Formula :?> string) with _ -> null
+        if not (String.IsNullOrEmpty f) && f.StartsWith "=" then arr.[1, 1] <- f
+    else
+        let raw =
+            try
+                rg.Formula :?> obj[,]
+            with _ -> null
+        if isNull raw then
+            // 逐单元格读取作为后备
             for r in 1..rows do
                 for c in 1..cols do
-                    if not (isNull data.[r, c]) then any <- true
-            if any then
-                let tableName = uniqueName usedTableNames (sanitizeIdentifier "Sheet" ws.Name)
-                // 列名：第一行为表头，空表头生成 col{序号}
-                let usedColNames = Collections.Generic.HashSet<string>()
-                let colNames =
-                    [|
-                        for c in 1..cols do
-                            let h = data.[1, c]
-                            let baseName =
-                                match h with
-                                | :? string as s when not (String.IsNullOrWhiteSpace s) -> s
-                                | _ -> sprintf "col%d" c
-                            yield uniqueName usedColNames (sanitizeIdentifier (sprintf "col%d" c) baseName)
-                    |]
-                let colTypes = inferColumnTypes data rows cols
-                // 建表
-                let quote (s: string) = "\"" + s.Replace("\"", "\"\"") + "\""
-                use cmd = new SQLiteCommand("", conn, tran)
-                cmd.CommandText <- sprintf "DROP TABLE IF EXISTS %s" (quote tableName)
-                cmd.ExecuteNonQuery() |> ignore
-                cmd.CommandText <-
-                    let defs =
-                        Array.map2
-                            (fun name t ->
-                                let ty =
-                                    match t with
-                                    | Integer -> "INTEGER"
-                                    | Real -> "REAL"
-                                    | Text -> "TEXT"
-                                sprintf "%s %s" (quote name) ty)
-                            colNames
-                            colTypes
-                        |> String.concat ", "
-                    sprintf "CREATE TABLE %s (%s)" (quote tableName) defs
-                cmd.ExecuteNonQuery() |> ignore
-                // 插入数据行：命名参数，预置后按行更新值复用
-                let pnames = [| for c in 1..cols -> sprintf "@c%s" colNames.[c - 1] |]
-                cmd.CommandText <-
-                    sprintf "INSERT INTO %s (%s) VALUES (%s)"
-                        (quote tableName)
-                        (colNames |> Array.map quote |> String.concat ", ")
-                        (String.concat ", " pnames)
+                    let f = try ((rg.Cells.[r, c] :?> Range).Formula :?> string) with _ -> null
+                    if not (String.IsNullOrEmpty f) && f.StartsWith "=" then arr.[r, c] <- f
+        else
+            for r in 1..rows do
                 for c in 1..cols do
-                    cmd.Parameters.AddWithValue(pnames.[c - 1], box DBNull.Value) |> ignore
-                for r in 2..rows do
-                    for c in 1..cols do
-                        cmd.Parameters.[pnames.[c - 1]].Value <-
-                            toDbValue colTypes.[c - 1] data.[r, c]
-                    cmd.ExecuteNonQuery() |> ignore
-    tran.Commit()
+                    match raw.[r, c] with
+                    | :? string as s when s.StartsWith "=" -> arr.[r, c] <- s
+                    | _ -> ()
+    arr
 
-/// 读取数据库中的表名（排除 SQLite 内部表）
-let private getTableNames (conn: SQLiteConnection) : string[] =
-    use cmd =
-        new SQLiteCommand("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name", conn)
-    use reader = cmd.ExecuteReader()
-    [| while reader.Read() do
-           yield reader.GetString 0 |]
+/// 读取整个区域的数字格式，返回基于 1 的下标的 string[,]
+let private readFormats (rg: Range) (rows: int) (cols: int) : string[,] =
+    let arr = Array2D.create (rows + 1) (cols + 1) null
+    if rows = 1 && cols = 1 then
+        arr.[1, 1] <- try (rg.NumberFormat :?> string) with _ -> null
+    else
+        let raw =
+            try
+                rg.NumberFormat :?> obj[,]
+            with _ -> null
+        if isNull raw then
+            // 逐单元格读取作为后备
+            for r in 1..rows do
+                for c in 1..cols do
+                    arr.[r, c] <- try ((rg.Cells.[r, c] :?> Range).NumberFormat :?> string) with _ -> null
+        else
+            for r in 1..rows do
+                for c in 1..cols do
+                    arr.[r, c] <- match raw.[r, c] with :? string as s -> s | _ -> null
+    arr
 
-/// 读取一张表的列名和声明的类型
-let private getColumns (conn: SQLiteConnection) (table: string) : (string * string)[] =
-    let t = table.Replace("\"", "\"\"")
-    use cmd = new SQLiteCommand(sprintf "PRAGMA table_info(\"%s\")" t, conn)
-    use reader = cmd.ExecuteReader()
-    [| while reader.Read() do
-           yield reader.GetString 1, reader.GetString 2 |]
-
-/// 声明的列类型是否为数值类型
-let private isNumericType (declared: string) =
-    let u = declared.ToUpperInvariant()
-    u.Contains "INT" || u.Contains "REAL" || u.Contains "FLOA" || u.Contains "DOUB" || u.Contains "NUMERIC"
-    || u.Contains "DEC"
-
+/// 数字格式是否表示日期/时间（含 y/m/d/h/s）
+let private isDateFormat (fmt: string) =
+    not (String.IsNullOrEmpty fmt)
+    && fmt.IndexOfAny([| 'y'; 'm'; 'd'; 'h'; 's' |]) >= 0
 /// 解析与导出格式一致的 ISO 日期
 let private tryParseIsoDate (s: string) =
     let mutable d = DateTime.MinValue
@@ -229,97 +167,155 @@ let private tryParseIsoDate (s: string) =
             &d)
     if ok then Some d else None
 
-/// 读取一张表的全部数据（不含表头）
-let private readRows (conn: SQLiteConnection) (table: string) (columns: (string * string)[]) : obj[][] =
-    let t = table.Replace("\"", "\"\"")
-    use cmd = new SQLiteCommand(sprintf "SELECT * FROM \"%s\"" t, conn)
-    use reader = cmd.ExecuteReader()
-    [|
-        while reader.Read() do
-            yield
-                [|
-                    for i in 0..reader.FieldCount - 1 ->
-                        match reader.GetValue i with
-                        | :? DBNull -> null
-                        | :? int64 as l -> box (double l)
-                        | :? double as d -> box d
-                        | :? string as s ->
-                            let declared = if i < columns.Length then snd columns.[i] else ""
-                            if isNumericType declared then
-                                let mutable f = 0.0
-                                if Double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, &f) then
-                                    box f
-                                else
-                                    box s
-                            else
-                                match tryParseIsoDate s with
-                                | Some d -> box d
-                                | None -> box s
-                        | :? (byte[]) as b ->
-                            // BLOB 以十六进制文本表示
-                            box (BitConverter.ToString(b).Replace("-", ""))
-                        | other -> box (other.ToString())
-                |]
-    |]
+/// 将当前工作簿另存为 SQLite 数据库（三张表，直接覆盖目标文件，不利用原有数据）
+let saveWorkbookAs (path: string) (wb: Workbook) =
+    // 直接覆盖：不使用原有数据库的数据
+    if System.IO.File.Exists path then
+        System.IO.File.Delete path
+    use conn = new SQLiteConnection("Data Source=" + path + ";Version=3;")
+    conn.Open()
+    use tran = conn.BeginTransaction()
+    use cmd = new SQLiteCommand("", conn, tran)
+    cmd.CommandText <- createSchemaSql
+    cmd.ExecuteNonQuery() |> ignore
+    // 工作簿
+    use insWb = new SQLiteCommand("INSERT INTO Workbook (name) VALUES (@name);", conn, tran)
+    insWb.Parameters.AddWithValue("@name", "") |> ignore
+    // 工作表
+    use insWs =
+        new SQLiteCommand(
+            "INSERT INTO Worksheet (position, name) VALUES (@position, @name);",
+            conn,
+            tran)
+    insWs.Parameters.AddWithValue("@position", 0) |> ignore
+    insWs.Parameters.AddWithValue("@name", "") |> ignore
+    // 单元格
+    use insCell =
+        new SQLiteCommand(
+            "INSERT INTO Cell (worksheet, row, col, value, formula) VALUES (@worksheet, @row, @col, @value, @formula);",
+            conn,
+            tran)
+    insCell.Parameters.AddWithValue("@worksheet", "") |> ignore
+    insCell.Parameters.AddWithValue("@row", 0) |> ignore
+    insCell.Parameters.AddWithValue("@col", 0) |> ignore
+    insCell.Parameters.AddWithValue("@value", "") |> ignore
+    insCell.Parameters.AddWithValue("@formula", "") |> ignore
 
-/// 从 SQLite 数据库创建新的 Excel 工作簿：每张表一个工作表
+    insWb.Parameters.["@name"].Value <- wb.Name
+    insWb.ExecuteNonQuery() |> ignore
+
+    wb.Worksheets
+    |> Seq.cast<Worksheet>
+    |> Seq.iteri (fun i ws ->
+        let position = i + 1
+        insWs.Parameters.["@position"].Value <- position
+        insWs.Parameters.["@name"].Value <- ws.Name
+        insWs.ExecuteNonQuery() |> ignore
+
+        let used = ws.UsedRange
+        let rows = used.Rows.Count
+        let cols = used.Columns.Count
+        if rows > 0 && cols > 0 then
+            let values = readValues used rows cols
+            let formulas = readFormulas used rows cols
+            let formats = readFormats used rows cols
+            for r in 1..rows do
+                for c in 1..cols do
+                    let v = values.[r, c]
+                    let f = formulas.[r, c]
+                    if not (isNull v) || not (isNull f) then
+                        insCell.Parameters.["@worksheet"].Value <- ws.Name
+                        insCell.Parameters.["@row"].Value <- r
+                        insCell.Parameters.["@col"].Value <- c
+                        insCell.Parameters.["@value"].Value <-
+                            if isNull v then
+                                box DBNull.Value
+                            else
+                                match v with
+                                | :? double as d when isDateFormat formats.[r, c] ->
+                                    box (DateTime.FromOADate(d).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))
+                                | _ -> box (toText v)
+                        insCell.Parameters.["@formula"].Value <-
+                            if isNull f then box DBNull.Value else box f
+                        insCell.ExecuteNonQuery() |> ignore)
+    tran.Commit()
+
+/// 从 SQLite 数据库创建新的 Excel 工作簿（按三张表重建）
 let createWorkbookFrom (app: Application) (path: string) : Workbook =
-    // 先在数据库中读取所有表的内容
-    let tables =
+    // 先读取数据库内容
+    let sheetNames, cells =
         use conn = new SQLiteConnection("Data Source=" + path + ";Version=3;")
         conn.Open()
-        let names = getTableNames conn
-        if names.Length = 0 then
-            invalidOp "数据库中没有任何数据表！"
-        [| for t in names ->
-               let cols = getColumns conn t
-               t, cols, readRows conn t cols |]
+        let sheetNames =
+            use cmd = new SQLiteCommand("SELECT name FROM Worksheet ORDER BY position;", conn)
+            use r = cmd.ExecuteReader()
+            [| while r.Read() do
+                   yield r.GetString 0 |]
+        let cells =
+            use cmd =
+                new SQLiteCommand(
+                    "SELECT worksheet, row, col, value, formula FROM Cell ORDER BY worksheet, row, col;",
+                    conn)
+            use r = cmd.ExecuteReader()
+            [|
+                while r.Read() do
+                    yield
+                        r.GetString 0,
+                        r.GetInt32 1,
+                        r.GetInt32 2,
+                        (if r.IsDBNull 3 then null else r.GetString 3),
+                        (if r.IsDBNull 4 then null else r.GetString 4)
+            |]
+        sheetNames, cells
+
+    if sheetNames.Length = 0 then
+        invalidOp "数据库中没有工作表记录！"
+
+    let cellsBySheet = cells |> Array.groupBy (fun (ws, _, _, _, _) -> ws) |> Map.ofArray
 
     // 创建新的工作簿
     let wb = app.Workbooks.Add(Type.Missing)
     let sheets = wb.Worksheets
     let usedSheetNames = Collections.Generic.HashSet<string>()
-    tables
-    |> Array.iteri (fun i (table, cols, rows) ->
+    sheetNames
+    |> Array.iteri (fun i name ->
         let ws =
             if i = 0 then
                 sheets.[1] :?> Worksheet
             else
-                sheets.Add(Type.Missing, sheets.[sheets.Count], Type.Missing, Type.Missing) :?> Worksheet
-        ws.Name <- toExcelSheetName usedSheetNames table
-        let nCols = cols.Length
-        let nRows = rows.Length
-        // 组装 obj[,]：第一行为列名
-        let arr = Array2D.create (nRows + 1) nCols null
-        for c in 0..nCols - 1 do
-            arr.[0, c] <- box (fst cols.[c])
-        for r in 0..nRows - 1 do
-            for c in 0..nCols - 1 do
-                arr.[r + 1, c] <- rows.[r].[c]
-        let target = ws.Range(ws.Cells.[1, 1], ws.Cells.[nRows + 1, nCols])
-        target.Value2 <- arr
-        // 日期列设置数字格式
-        for c in 0..nCols - 1 do
-            let isDateCol =
-                rows
-                |> Array.exists (fun row -> match row.[c] with :? DateTime -> true | _ -> false)
-            if isDateCol then
-                let hasTime =
-                    rows
-                    |> Array.exists (fun row ->
-                        match row.[c] with
-                        | :? DateTime as d -> d.TimeOfDay <> TimeSpan.Zero
-                        | _ -> false)
-                let fmt = if hasTime then "yyyy-mm-dd hh:mm:ss" else "yyyy-mm-dd"
-                ws.Range(ws.Cells.[1, c + 1], ws.Cells.[nRows + 1, c + 1]).NumberFormat <- fmt
-        target.Columns.AutoFit() |> ignore)
+                sheets.Add(Type.Missing, sheets.[sheets.Count], Type.Missing, Type.Missing)
+                :?> Worksheet
+        ws.Name <- toExcelSheetName usedSheetNames name
+        match Map.tryFind name cellsBySheet with
+        | None -> ()
+        | Some rows ->
+            for (_, row, col, value, formula) in rows do
+                let cell = ws.Cells.[row, col] :?> Range
+                if not (isNull formula) then
+                    // 有公式则写公式，由 Excel 重新计算值
+                    cell.Formula <- formula
+                elif not (isNull value) then
+                    match tryParseIsoDate value with
+                    | Some d ->
+                        cell.Value2 <- box d
+                        cell.NumberFormat <-
+                            if d.TimeOfDay <> TimeSpan.Zero then
+                                "yyyy-mm-dd hh:mm:ss"
+                            else
+                                "yyyy-mm-dd"
+                    | None ->
+                        let mutable f = 0.0
+                        if Double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, &f) then
+                            cell.Value2 <- box f
+                        else
+                            cell.Value2 <- box value)
     // 删除多余的空白工作表
     let oldCount = sheets.Count
-    if oldCount > tables.Length then
+    if oldCount > sheetNames.Length then
         let opt = app.DisplayAlerts
         app.DisplayAlerts <- false
         try
-            for i in oldCount .. -1 .. (tables.Length + 1) do
+            for i in oldCount .. -1 .. (sheetNames.Length + 1) do
                 (sheets.[i] :?> Worksheet).Delete()
         finally
             app.DisplayAlerts <- opt

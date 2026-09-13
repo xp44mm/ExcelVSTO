@@ -253,14 +253,14 @@
             // 
             this.btnSaveToSqlite.Label = "工作簿另存为SQLite";
             this.btnSaveToSqlite.Name = "btnSaveToSqlite";
-            this.btnSaveToSqlite.ScreenTip = "把当前工作簿的每个工作表保存为数据库中的一张表，第一行为列名";
+            this.btnSaveToSqlite.ScreenTip = "把当前工作簿保存为SQLite数据库（工作簿/工作表/单元格三张表），直接覆盖目标文件";
             this.btnSaveToSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnSaveToSqlite_Click);
             // 
             // btnCreateFromSqlite
             // 
             this.btnCreateFromSqlite.Label = "从SQLite创建工作簿";
             this.btnCreateFromSqlite.Name = "btnCreateFromSqlite";
-            this.btnCreateFromSqlite.ScreenTip = "从数据库的每张表创建一个工作表，第一行为列名";
+            this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建一个新工作簿";
             this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
             // 
             // Ribbon1

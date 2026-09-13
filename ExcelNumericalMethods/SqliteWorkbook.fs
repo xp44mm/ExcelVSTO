@@ -129,7 +129,7 @@ let private toDbValue (colType: ColumnType) (v: obj) : obj =
 
 /// 将当前工作簿另存为 SQLite 数据库：每个工作表一张表，第一行为列名
 let saveWorkbookAs (path: string) (wb: Workbook) =
-    use conn = new SQLiteConnection(sprintf "Data Source=%s;Version=3;" path)
+    use conn = new SQLiteConnection("Data Source=" + path + ";Version=3;")
     conn.Open()
     use tran = conn.BeginTransaction()
     let usedTableNames = Collections.Generic.HashSet<string>()
@@ -179,18 +179,19 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
                         |> String.concat ", "
                     sprintf "CREATE TABLE %s (%s)" (quote tableName) defs
                 cmd.ExecuteNonQuery() |> ignore
-                // 插入数据行
-                let pnames = [| for c in 1..cols -> sprintf "@p%d" (c - 1) |]
+                // 插入数据行：命名参数，预置后按行更新值复用
+                let pnames = [| for c in 1..cols -> sprintf "@c%s" colNames.[c - 1] |]
                 cmd.CommandText <-
                     sprintf "INSERT INTO %s (%s) VALUES (%s)"
                         (quote tableName)
                         (colNames |> Array.map quote |> String.concat ", ")
                         (String.concat ", " pnames)
+                for c in 1..cols do
+                    cmd.Parameters.AddWithValue(pnames.[c - 1], box DBNull.Value) |> ignore
                 for r in 2..rows do
-                    cmd.Parameters.Clear()
                     for c in 1..cols do
-                        cmd.Parameters.AddWithValue(pnames.[c - 1], toDbValue colTypes.[c - 1] data.[r, c])
-                        |> ignore
+                        cmd.Parameters.[pnames.[c - 1]].Value <-
+                            toDbValue colTypes.[c - 1] data.[r, c]
                     cmd.ExecuteNonQuery() |> ignore
     tran.Commit()
 
@@ -265,7 +266,7 @@ let private readRows (conn: SQLiteConnection) (table: string) (columns: (string 
 let createWorkbookFrom (app: Application) (path: string) : Workbook =
     // 先在数据库中读取所有表的内容
     let tables =
-        use conn = new SQLiteConnection(sprintf "Data Source=%s;Version=3;" path)
+        use conn = new SQLiteConnection("Data Source=" + path + ";Version=3;")
         conn.Open()
         let names = getTableNames conn
         if names.Length = 0 then

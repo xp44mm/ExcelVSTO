@@ -273,7 +273,9 @@ namespace ExcelVSTO
                 Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
                 DefaultExt = ".db",
                 AddExtension = true,
-                OverwritePrompt = true
+                OverwritePrompt = true,
+                InitialDirectory = wb.Path,
+                FileName = System.IO.Path.GetFileNameWithoutExtension(wb.Name) + ".db"
             };
             if (dlg.ShowDialog() == true)
             {

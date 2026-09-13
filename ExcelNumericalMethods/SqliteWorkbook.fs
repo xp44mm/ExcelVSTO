@@ -9,24 +9,16 @@ open System
 open System.Data.SQLite
 open Microsoft.Office.Interop.Excel
 
-/// 建表 SQL（与解决方案根目录 create_excel_db.sql 保持一致）
+/// 建表 SQL：唯一事实来源为解决方案根目录的 create_excel_db.sql
+/// （编译期内嵌为程序集资源，见 ExcelNumericalMethods.fsproj），此处从资源读取
 let createSchemaSql =
-    """CREATE TABLE Workbook (
-    name TEXT PRIMARY KEY
-);
-CREATE TABLE Worksheet (
-    position INTEGER NOT NULL,
-    name     TEXT NOT NULL UNIQUE,
-    PRIMARY KEY (position)
-);
-CREATE TABLE Cell (
-    worksheet TEXT NOT NULL REFERENCES Worksheet(name),
-    row       INTEGER NOT NULL,
-    col       INTEGER NOT NULL,
-    formula   TEXT,
-    format    TEXT,
-    PRIMARY KEY (worksheet, row, col)
-);"""
+    let resourceName = "ExcelNumericalMethods.create_excel_db.sql"
+    let asm = System.Reflection.Assembly.GetExecutingAssembly()
+    use stream = asm.GetManifestResourceStream(resourceName)
+    if isNull stream then
+        failwithf "未找到内嵌资源 %s：请确认 ExcelNumericalMethods.fsproj 已包含 create_excel_db.sql 的 EmbeddedResource" resourceName
+    use reader = new System.IO.StreamReader(stream)
+    reader.ReadToEnd()
 
 /// 在已用名称集合中生成不重复的名称
 let private uniqueName (used: Collections.Generic.HashSet<string>) (baseName: string) =

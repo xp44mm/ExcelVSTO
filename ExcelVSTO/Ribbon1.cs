@@ -259,29 +259,57 @@ namespace ExcelVSTO
 
         }
 
-        private void btn_RenderFSharp_Click(object sender, RibbonControlEventArgs e)
+        private void btnSaveToSqlite_Click(object sender, RibbonControlEventArgs e)
         {
-            //var sel = (Range)Globals.ThisAddIn.Application.Selection;
-            //var cells =
-            //    Traversal.getCellsOfRange(sel)
-            //    .Where(cell => cell.Formula != null)
-            //    .Select(cell => RenderFSharp.getFsharp(cell))
-            //    .Select(tpl => String.Format("let {0} = {1}", tpl.Item1, tpl.Item2))
-            //    .ToArray()
-            //    ;
+            var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
+            if (wb == null)
+            {
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "另存为 SQLite 数据库",
+                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
+                DefaultExt = ".db",
+                AddExtension = true,
+                OverwritePrompt = true
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    ExcelNumericalMethods.SqliteWorkbook.saveWorkbookAs(dlg.FileName, wb);
+                    MessageBox.Show("工作簿已保存到 SQLite 数据库：\n" + dlg.FileName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
 
-            //if (cells.Length == 0)
-            //{
-            //    MessageBox.Show("请选择要生成代码的单元格！");
-            //}
-            //else
-            //{
-            //    var text = String.Join(Environment.NewLine, cells);
-            //    var dlg = new TextWindow("FSharp代码", text);
-            //    dlg.ShowDialog();
-
-            //}
-
+        private void btnCreateFromSqlite_Click(object sender, RibbonControlEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "从 SQLite 数据库创建工作簿",
+                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
+                CheckFileExists = true
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    var wb = ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom(Globals.ThisAddIn.Application, dlg.FileName);
+                    wb.Activate();
+                    MessageBox.Show("已从数据库创建新工作簿：" + dlg.FileName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
         }
     }
 }

@@ -57,8 +57,9 @@
             this.group6 = this.Factory.CreateRibbonGroup();
             this.btn_referencesOfWorksheet = this.Factory.CreateRibbonButton();
             this.btn_dependentsOfWorksheet = this.Factory.CreateRibbonButton();
-            this.group7 = this.Factory.CreateRibbonGroup();
-            this.btn_RenderFSharp = this.Factory.CreateRibbonButton();
+            this.group8 = this.Factory.CreateRibbonGroup();
+            this.btnSaveToSqlite = this.Factory.CreateRibbonButton();
+            this.btnCreateFromSqlite = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -66,7 +67,7 @@
             this.group5.SuspendLayout();
             this.group4.SuspendLayout();
             this.group6.SuspendLayout();
-            this.group7.SuspendLayout();
+            this.group8.SuspendLayout();
             this.SuspendLayout();
             // 
             // tab1
@@ -78,7 +79,7 @@
             this.tab1.Groups.Add(this.group5);
             this.tab1.Groups.Add(this.group4);
             this.tab1.Groups.Add(this.group6);
-            this.tab1.Groups.Add(this.group7);
+            this.tab1.Groups.Add(this.group8);
             this.tab1.Label = "TabAddIns";
             this.tab1.Name = "tab1";
             // 
@@ -241,17 +242,26 @@
             this.btn_dependentsOfWorksheet.Tag = "工作表输出";
             this.btn_dependentsOfWorksheet.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_dependentsOfWorksheet_Click);
             // 
-            // group7
+            // group8
             // 
-            this.group7.Items.Add(this.btn_RenderFSharp);
-            this.group7.Label = "渲染";
-            this.group7.Name = "group7";
+            this.group8.Items.Add(this.btnSaveToSqlite);
+            this.group8.Items.Add(this.btnCreateFromSqlite);
+            this.group8.Label = "SQLite";
+            this.group8.Name = "group8";
             // 
-            // btn_RenderFSharp
+            // btnSaveToSqlite
             // 
-            this.btn_RenderFSharp.Label = "渲染FSharp";
-            this.btn_RenderFSharp.Name = "btn_RenderFSharp";
-            this.btn_RenderFSharp.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_RenderFSharp_Click);
+            this.btnSaveToSqlite.Label = "工作簿另存为SQLite";
+            this.btnSaveToSqlite.Name = "btnSaveToSqlite";
+            this.btnSaveToSqlite.ScreenTip = "把当前工作簿的每个工作表保存为数据库中的一张表，第一行为列名";
+            this.btnSaveToSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnSaveToSqlite_Click);
+            // 
+            // btnCreateFromSqlite
+            // 
+            this.btnCreateFromSqlite.Label = "从SQLite创建工作簿";
+            this.btnCreateFromSqlite.Name = "btnCreateFromSqlite";
+            this.btnCreateFromSqlite.ScreenTip = "从数据库的每张表创建一个工作表，第一行为列名";
+            this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
             // 
             // Ribbon1
             // 
@@ -273,8 +283,8 @@
             this.group4.PerformLayout();
             this.group6.ResumeLayout(false);
             this.group6.PerformLayout();
-            this.group7.ResumeLayout(false);
-            this.group7.PerformLayout();
+            this.group8.ResumeLayout(false);
+            this.group8.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -304,8 +314,9 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group6;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_referencesOfWorksheet;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_dependentsOfWorksheet;
-        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group7;
-        internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_RenderFSharp;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group8;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSaveToSqlite;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCreateFromSqlite;
     }
 
     partial class ThisRibbonCollection

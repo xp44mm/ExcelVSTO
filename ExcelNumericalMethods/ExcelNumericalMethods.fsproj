@@ -14,12 +14,13 @@
     <Compile Include="ValidationFormula.fs" />
     <Compile Include="NameOps.fs" />
     <Compile Include="WorksheetOps.fs" />
-    <Compile Include="RenderFSharp.fs" />
+    <Compile Include="SqliteWorkbook.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Idioms" Version="1.5.17" />
     <PackageReference Include="FSharp.xUnit" Version="1.4.1" />
+<PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" />
   </ItemGroup>
 
   <ItemGroup>

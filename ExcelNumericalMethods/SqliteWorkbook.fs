@@ -2,12 +2,11 @@
 ///数据库结构见解决方案根目录的 create_excel_db.sql，共三张表：
 ///  Workbook  工作簿的名称
 ///  Worksheet 工作表的顺序和名称
-///  Cell      单元格：所在工作表、行地址、列地址、值、公式
+///  Cell      单元格：所在工作表、行地址、列地址、公式、格式
 module ExcelNumericalMethods.SqliteWorkbook
 
 open System
 open System.Data.SQLite
-open System.Globalization
 open Microsoft.Office.Interop.Excel
 
 /// 建表 SQL（与解决方案根目录 create_excel_db.sql 保持一致）
@@ -24,24 +23,10 @@ CREATE TABLE Cell (
     worksheet TEXT NOT NULL REFERENCES Worksheet(name),
     row       INTEGER NOT NULL,
     col       INTEGER NOT NULL,
-    value     TEXT,
     formula   TEXT,
+    format    TEXT,
     PRIMARY KEY (worksheet, row, col)
 );"""
-
-/// 单元格值转换为数据库文本
-let private toText (v: obj) : string =
-    match v with
-    | null -> null
-    | :? DateTime as d -> d.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
-    | :? bool as b -> if b then "1" else "0"
-    | :? double as f -> f.ToString("G17", CultureInfo.InvariantCulture)
-    | :? float32 as f -> (float f).ToString("G17", CultureInfo.InvariantCulture)
-    | :? int as i -> string i
-    | :? int64 as i -> string i
-    | :? decimal as m -> m.ToString(CultureInfo.InvariantCulture)
-    | :? string as s -> s
-    | other -> other.ToString()
 
 /// 在已用名称集合中生成不重复的名称
 let private uniqueName (used: Collections.Generic.HashSet<string>) (baseName: string) =
@@ -67,50 +52,13 @@ let private toExcelSheetName (used: Collections.Generic.HashSet<string>) (baseNa
     let s = if s.Length > 31 then s.Substring(0, 31) else s
     uniqueName used s
 
-/// 读取单个单元格的值（保留日期，错误值返回 null）
-let private readCellValue (cell: Range) : obj =
-    try
-        let v = cell.get_Value(XlRangeValueDataType.xlRangeValueDefault)
-        match v with
-        | :? double as d when Double.IsNaN d || Double.IsInfinity d -> null
-        | :? int -> null // Excel 错误值
-        | _ -> v
-    with _ -> null
-
-/// 读取整个区域的值，返回基于 1 的下标的 obj[,]
-let private readValues (rg: Range) (rows: int) (cols: int) : obj[,] =
-    let arr = Array2D.create (rows + 1) (cols + 1) null
-    if rows = 1 && cols = 1 then
-        arr.[1, 1] <- readCellValue rg
-    else
-        let raw =
-            try
-                rg.get_Value(XlRangeValueDataType.xlRangeValueDefault) :?> obj[,]
-            with _ -> null
-        if isNull raw then
-            // 逐单元格读取作为后备
-            for r in 1..rows do
-                for c in 1..cols do
-                    arr.[r, c] <- readCellValue (rg.Cells.[r, c] :?> Range)
-        else
-            for r in 1..rows do
-                for c in 1..cols do
-                    arr.[r, c] <- raw.[r, c]
-        // 错误值规整为 null
-        for r in 1..rows do
-            for c in 1..cols do
-                match arr.[r, c] with
-                | :? double as d when Double.IsNaN d || Double.IsInfinity d -> arr.[r, c] <- null
-                | :? int -> arr.[r, c] <- null
-                | _ -> ()
-    arr
-
-/// 读取整个区域的公式，返回基于 1 的下标的 string[,]（无公式的单元格为 null）
+/// 读取整个区域的公式或常量文本，返回基于 1 的下标的 string[,]（空单元格为 null）
+/// 常量单元格的 Formula 返回其值文本；公式单元格返回公式串
 let private readFormulas (rg: Range) (rows: int) (cols: int) : string[,] =
     let arr = Array2D.create (rows + 1) (cols + 1) null
     if rows = 1 && cols = 1 then
         let f = try (rg.Formula :?> string) with _ -> null
-        if not (String.IsNullOrEmpty f) && f.StartsWith "=" then arr.[1, 1] <- f
+        if not (String.IsNullOrEmpty f) then arr.[1, 1] <- f
     else
         let raw =
             try
@@ -121,51 +69,14 @@ let private readFormulas (rg: Range) (rows: int) (cols: int) : string[,] =
             for r in 1..rows do
                 for c in 1..cols do
                     let f = try ((rg.Cells.[r, c] :?> Range).Formula :?> string) with _ -> null
-                    if not (String.IsNullOrEmpty f) && f.StartsWith "=" then arr.[r, c] <- f
+                    if not (String.IsNullOrEmpty f) then arr.[r, c] <- f
         else
             for r in 1..rows do
                 for c in 1..cols do
                     match raw.[r, c] with
-                    | :? string as s when s.StartsWith "=" -> arr.[r, c] <- s
+                    | :? string as s when not (String.IsNullOrEmpty s) -> arr.[r, c] <- s
                     | _ -> ()
     arr
-
-/// 读取整个区域的数字格式，返回基于 1 的下标的 string[,]
-let private readFormats (rg: Range) (rows: int) (cols: int) : string[,] =
-    let arr = Array2D.create (rows + 1) (cols + 1) null
-    if rows = 1 && cols = 1 then
-        arr.[1, 1] <- try (rg.NumberFormat :?> string) with _ -> null
-    else
-        let raw =
-            try
-                rg.NumberFormat :?> obj[,]
-            with _ -> null
-        if isNull raw then
-            // 逐单元格读取作为后备
-            for r in 1..rows do
-                for c in 1..cols do
-                    arr.[r, c] <- try ((rg.Cells.[r, c] :?> Range).NumberFormat :?> string) with _ -> null
-        else
-            for r in 1..rows do
-                for c in 1..cols do
-                    arr.[r, c] <- match raw.[r, c] with :? string as s -> s | _ -> null
-    arr
-
-/// 数字格式是否表示日期/时间（含 y/m/d/h/s）
-let private isDateFormat (fmt: string) =
-    not (String.IsNullOrEmpty fmt)
-    && fmt.IndexOfAny([| 'y'; 'm'; 'd'; 'h'; 's' |]) >= 0
-/// 解析与导出格式一致的 ISO 日期
-let private tryParseIsoDate (s: string) =
-    let mutable d = DateTime.MinValue
-    let ok =
-        DateTime.TryParseExact(
-            s,
-            [| "yyyy-MM-dd HH:mm:ss"; "yyyy-MM-dd" |],
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.None,
-            &d)
-    if ok then Some d else None
 
 /// 将当前工作簿另存为 SQLite 数据库（三张表，直接覆盖目标文件，不利用原有数据）
 let saveWorkbookAs (path: string) (wb: Workbook) =
@@ -189,17 +100,17 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
             tran)
     insWs.Parameters.AddWithValue("@position", 0) |> ignore
     insWs.Parameters.AddWithValue("@name", "") |> ignore
-    // 单元格
+    // 单元格：公式（常量时为其值文本） + 数字格式
     use insCell =
         new SQLiteCommand(
-            "INSERT INTO Cell (worksheet, row, col, value, formula) VALUES (@worksheet, @row, @col, @value, @formula);",
+            "INSERT INTO Cell (worksheet, row, col, formula, format) VALUES (@worksheet, @row, @col, @formula, @format);",
             conn,
             tran)
     insCell.Parameters.AddWithValue("@worksheet", "") |> ignore
     insCell.Parameters.AddWithValue("@row", 0) |> ignore
     insCell.Parameters.AddWithValue("@col", 0) |> ignore
-    insCell.Parameters.AddWithValue("@value", "") |> ignore
     insCell.Parameters.AddWithValue("@formula", "") |> ignore
+    insCell.Parameters.AddWithValue("@format", "") |> ignore
 
     insWb.Parameters.["@name"].Value <- wb.Name
     insWb.ExecuteNonQuery() |> ignore
@@ -216,27 +127,21 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
         let rows = used.Rows.Count
         let cols = used.Columns.Count
         if rows > 0 && cols > 0 then
-            let values = readValues used rows cols
             let formulas = readFormulas used rows cols
-            let formats = readFormats used rows cols
             for r in 1..rows do
                 for c in 1..cols do
-                    let v = values.[r, c]
                     let f = formulas.[r, c]
-                    if not (isNull v) || not (isNull f) then
+                    if not (String.IsNullOrEmpty f) then
+                        let fmt =
+                            try
+                                ((used.Cells.[r, c] :?> Range).NumberFormat :?> string)
+                            with _ -> null
                         insCell.Parameters.["@worksheet"].Value <- ws.Name
                         insCell.Parameters.["@row"].Value <- r
                         insCell.Parameters.["@col"].Value <- c
-                        insCell.Parameters.["@value"].Value <-
-                            if isNull v then
-                                box DBNull.Value
-                            else
-                                match v with
-                                | :? double as d when isDateFormat formats.[r, c] ->
-                                    box (DateTime.FromOADate(d).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture))
-                                | _ -> box (toText v)
-                        insCell.Parameters.["@formula"].Value <-
-                            if isNull f then box DBNull.Value else box f
+                        insCell.Parameters.["@formula"].Value <- box f
+                        insCell.Parameters.["@format"].Value <-
+                            if isNull fmt then box DBNull.Value else box fmt
                         insCell.ExecuteNonQuery() |> ignore)
     tran.Commit()
 
@@ -254,7 +159,7 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
         let cells =
             use cmd =
                 new SQLiteCommand(
-                    "SELECT worksheet, row, col, value, formula FROM Cell ORDER BY worksheet, row, col;",
+                    "SELECT worksheet, row, col, formula, format FROM Cell ORDER BY worksheet, row, col;",
                     conn)
             use r = cmd.ExecuteReader()
             [|
@@ -289,26 +194,13 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
         match Map.tryFind name cellsBySheet with
         | None -> ()
         | Some rows ->
-            for (_, row, col, value, formula) in rows do
+            for (_, row, col, formula, format) in rows do
                 let cell = ws.Cells.[row, col] :?> Range
+                // 先设数字格式再写公式：格式为文本(@)时值按文本保存
+                if not (isNull format) then
+                    try cell.NumberFormat <- format with _ -> ()
                 if not (isNull formula) then
-                    // 有公式则写公式，由 Excel 重新计算值
-                    cell.Formula <- formula
-                elif not (isNull value) then
-                    match tryParseIsoDate value with
-                    | Some d ->
-                        cell.Value2 <- box d
-                        cell.NumberFormat <-
-                            if d.TimeOfDay <> TimeSpan.Zero then
-                                "yyyy-mm-dd hh:mm:ss"
-                            else
-                                "yyyy-mm-dd"
-                    | None ->
-                        let mutable f = 0.0
-                        if Double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, &f) then
-                            cell.Value2 <- box f
-                        else
-                            cell.Value2 <- box value)
+                    cell.Formula <- formula)
     // 删除多余的空白工作表
     let oldCount = sheets.Count
     if oldCount > sheetNames.Length then

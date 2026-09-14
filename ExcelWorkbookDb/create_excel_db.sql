@@ -17,10 +17,12 @@ CREATE TABLE Worksheet (
 );
 
 CREATE TABLE Cell (
-    worksheet TEXT NOT NULL REFERENCES Worksheet(name),
+    worksheet TEXT NOT NULL,
     row       INTEGER NOT NULL,     -- 行地址，从 1 开始
     col       INTEGER NOT NULL,     -- 列地址，从 1 开始
     formula   TEXT,                 -- 单元格内容：公式或文本形式的值
     format    TEXT,                 -- 单元格格式（数字格式）
-    PRIMARY KEY (worksheet, row, col)
+    PRIMARY KEY (worksheet, row, col),
+    -- 外键约束：Cell.worksheet 引用 Worksheet.name（Line 15 字段）
+    CONSTRAINT fk_cell_worksheet FOREIGN KEY (worksheet) REFERENCES Worksheet(name)
 );

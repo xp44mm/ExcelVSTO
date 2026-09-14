@@ -34,30 +34,43 @@ let private toExcelSheetName (used: Collections.Generic.HashSet<string>) (baseNa
     let s = if s.Length > 31 then s.Substring(0, 31) else s
     uniqueName used s
 
-/// 读取整个区域的公式或常量文本，返回基于 1 的下标的 string[,]（空单元格为 null）
-/// 常量单元格的 Formula 返回其值文本；公式单元格返回公式串
-let private readFormulas (rg: Range) (rows: int) (cols: int) : string[,] =
-    let arr = Array2D.create (rows + 1) (cols + 1) null
+/// 读取整个区域的公式与数字格式，返回基于 1 的下标的 (公式, 数字格式) string[,]
+/// 公式为 null 或空表示空单元格（不写入）；数字格式为 null 表示读取失败（写入时用默认值 General）
+let private readCells (rg: Range) (rows: int) (cols: int) : (string * string)[,] =
+    let arr = Array2D.create (rows + 1) (cols + 1) (null, null)
     if rows = 1 && cols = 1 then
         let f = try (rg.Formula :?> string) with _ -> null
-        if not (String.IsNullOrEmpty f) then arr.[1, 1] <- f
+        let nf = try (rg.NumberFormat :?> string) with _ -> null
+        arr.[1, 1] <- (f, nf)
     else
-        let raw =
+        let rawF =
             try
                 rg.Formula :?> obj[,]
             with _ -> null
-        if isNull raw then
-            // 逐单元格读取作为后备
+        let rawN =
+            try
+                rg.NumberFormat :?> obj[,]
+            with _ -> null
+        if isNull rawF || isNull rawN then
+            // 批量读取失败时逐单元格读取公式与数字格式
             for r in 1..rows do
                 for c in 1..cols do
-                    let f = try ((rg.Cells.[r, c] :?> Range).Formula :?> string) with _ -> null
-                    if not (String.IsNullOrEmpty f) then arr.[r, c] <- f
+                    let cell = rg.Cells.[r, c] :?> Range
+                    let f = try (cell.Formula :?> string) with _ -> null
+                    let nf = try (cell.NumberFormat :?> string) with _ -> null
+                    arr.[r, c] <- (f, nf)
         else
             for r in 1..rows do
                 for c in 1..cols do
-                    match raw.[r, c] with
-                    | :? string as s when not (String.IsNullOrEmpty s) -> arr.[r, c] <- s
-                    | _ -> ()
+                    let f =
+                        match rawF.[r, c] with
+                        | :? string as s -> s
+                        | _ -> null
+                    let nf =
+                        match rawN.[r, c] with
+                        | :? string as s -> s
+                        | _ -> null
+                    arr.[r, c] <- (f, nf)
     arr
 
 /// 将当前工作簿另存为 SQLite 数据库（三张表，直接覆盖目标文件，不利用原有数据）
@@ -75,22 +88,18 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
             let rows = used.Rows.Count
             let cols = used.Columns.Count
             if rows > 0 && cols > 0 then
-                let formulas = readFormulas used rows cols
+                let cellData = readCells used rows cols
                 seq {
                     for r in 1..rows do
                         for c in 1..cols do
-                            let f = formulas.[r, c]
+                            let f, nf = cellData.[r, c]
                             if not (String.IsNullOrEmpty f) then
-                                let fmt =
-                                    try
-                                        ((used.Cells.[r, c] :?> Range).NumberFormat :?> string)
-                                    with _ -> null
                                 yield
                                     { Worksheet = ws.Name
                                       Row = r
                                       Col = c
                                       Formula = f
-                                      NumberFormat = if isNull fmt then WorkbookDb.DefaultNumberFormat else fmt }
+                                      NumberFormat = if isNull nf then WorkbookDb.DefaultNumberFormat else nf }
                 }
             else
                 Seq.empty)

@@ -10,11 +10,13 @@ Excel 工作簿 SQLite 数据库访问包装库（netstandard2.0）。
 
 | 表 | 字段 | 说明 |
 |---|---|---|
-| Workbook | name | 工作簿名称（单行表） |
+| Workbook | name | 工作簿名称（契约：恒有一行且名称非空） |
 | Worksheet | position（主键）、name | 工作表的顺序与名称 |
 | Cell | worksheet、row、col（复合主键）、formula、NumberFormat | 单元格内容与数字格式 |
 
 - `Cell.worksheet` 外键引用 `Worksheet.name`，打开连接时默认开启外键强制（`PRAGMA foreign_keys = ON`）。
+- `Workbook` 表恒有一行且名称非空：`save` 与 `createDatabase` 保证写入，`setWorkbookName` 拒绝空名称，读取到空表时 `getWorkbookName` 报错（旧版本建的库需先补写名称）。
+- 工作簿名称字段目前仅随 `save`/`load` 往返保留：从数据库重建 Excel 工作簿（`ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom`）是新建工作簿，暂未应用存储的名称。
 - `formula` 不允许为 NULL（公式为空则该单元格不写入）。
 - `NumberFormat` 不允许为 NULL，默认 `'General'`（对应 Excel API `Range.NumberFormat`）。
 
@@ -23,12 +25,12 @@ Excel 工作簿 SQLite 数据库访问包装库（netstandard2.0）。
 ```fsharp
 open ExcelWorkbookDb
 
-// 新建数据库文件（覆盖已有文件）并执行建表 SQL
-WorkbookDb.createDatabase path
+// 新建数据库文件（覆盖已有文件），执行建表 SQL 并立即写入工作簿名称
+WorkbookDb.createDatabase path "工作簿1"
 
 // 整体保存：名称 + 工作表 + 单元格（覆盖写入，不合并原有数据）
 let data =
-    { Name = Some "工作簿1"
+    { Name = "工作簿1"
       Worksheets = [| { Position = 1; Name = "Sheet1" } |]
       Cells =
         [| { Worksheet = "Sheet1"
@@ -56,22 +58,23 @@ WorkbookDb.withConnection path (fun conn -> WorkbookDb.getCellsOf conn "Sheet1")
 
 - `WorksheetRow { Position: int; Name: string }` —— 对应 Worksheet 表
 - `CellRow { Worksheet: string; Row: int; Col: int; Formula: string; NumberFormat: string }` —— 对应 Cell 表
-- `WorkbookData { Name: string option; Worksheets: WorksheetRow[]; Cells: CellRow[] }` —— 数据库完整内容
+- `WorkbookData { Name: string; Worksheets: WorksheetRow[]; Cells: CellRow[] }` —— 数据库完整内容
+- `CellRow` 成员：`getLocalAdress()` 计算单元格地址（如 `A1`、`AA10`）；`FullAdress()` 计算完整地址（如 `Sheet1!A1`，工作表名按公式引用规则自动加引号，如 `'My Sheet'!A1`）
 
 ### 模块 `WorkbookDb`
 
 | 函数 | 说明 |
 |---|---|
-| `createDatabase path` | 新建数据库文件（覆盖）并执行建表 SQL |
+| `createDatabase path name` | 新建数据库文件（覆盖）、执行建表 SQL 并立即写入工作簿名称 |
 | `save path data` | 将完整工作簿数据整体写入文件（覆盖，不合并原有数据） |
 | `load path` | 读取数据库完整内容 |
 | `withConnection path f` | 打开连接执行读取操作，结束后释放（开启外键强制） |
 | `withTransaction path f` | 在单个事务中执行写入操作，成功提交、异常回滚 |
-| `getWorkbookName conn` | 读取工作簿名称 |
+| `getWorkbookName conn` | 读取工作簿名称（契约保证恒有一行；空表报错） |
 | `getWorksheets conn` | 读取全部工作表（按 position 升序） |
 | `getCells conn` | 读取全部单元格（按 worksheet, row, col 升序） |
 | `getCellsOf conn worksheet` | 读取指定工作表的单元格 |
-| `setWorkbookName tran name` | 写入工作簿名称（先清空 Workbook 表） |
+| `setWorkbookName tran name` | 写入工作簿名称（先清空 Workbook 表；拒绝空名称） |
 | `insertWorksheet tran ws` | 插入一条工作表记录 |
 | `insertCell tran cell` | 插入一条单元格记录 |
 | `clear tran` | 清空三张表（保留表结构） |

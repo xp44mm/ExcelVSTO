@@ -22,6 +22,21 @@ type CellRow =
       Formula: string // 单元格内容：公式或文本形式的值；公式为空则该单元格不写入
       NumberFormat: string } // 数字格式（对应 Excel API Range.NumberFormat；无格式时为 General）
 
+      /// 计算单元格的 Excel 地址（如 A1、B2、AA10 等）
+      member this.getLocalAdress() : string =
+        // 列号（从 1 开始）转 Excel 列字母：A=1、Z=26、AA=27……（双射 26 进制）
+        let rec columnLetters (col: int) (acc: string) =
+            if col <= 0 then acc
+            else
+                let quotient = (col - 1) / 26
+                let remainder = (col - 1) % 26
+                let letter = string (char (int 'A' + remainder))
+                columnLetters quotient (letter + acc)
+        columnLetters this.Col "" + string this.Row
+      /// 计算单元格的完整 Excel 地址（如 Sheet1!A1、Sheet2!B2 等）
+      member this.FullAdress() : string =
+        this.Worksheet + "!" + this.getLocalAdress()
+
 /// 工作簿数据库的完整内容：名称、工作表、单元格
 type WorkbookData =
     { Name: string option

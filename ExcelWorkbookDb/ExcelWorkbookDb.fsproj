@@ -1,7 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <NuGetAudit>false</NuGetAudit>
     <TargetFramework>netstandard2.0</TargetFramework>
     <OutputType>Library</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Excel 工作簿 SQLite 数据库访问包装库（netstandard2.0，不依赖 Excel 互操作）。</Description>
+    <Authors>xp44m</Authors>
+    <Company>34696643@qq.com</Company>
+    <Copyright>xp44mm</Copyright>
+    <PackageLicenseExpression>LGPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/xp44mm/ExcelVSTO</RepositoryUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <AssemblyVersion></AssemblyVersion>
+    <FileVersion></FileVersion>
+    <Version>1.0.0</Version>
+    <PackageReleaseNotes>初版：封装 Workbook / Worksheet / Cell 三张表；建表 SQL 内嵌为程序集资源。</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/xp44mm/ExcelVSTO</PackageProjectUrl>
+    <PackageTags>sqlite;excel;fsharp;workbook</PackageTags>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -9,7 +25,12 @@
     <Compile Include="WorkbookDb.fs" />
   </ItemGroup>
 
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="..\readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" />

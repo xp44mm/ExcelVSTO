@@ -13,8 +13,8 @@
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <AssemblyVersion></AssemblyVersion>
     <FileVersion></FileVersion>
-    <Version>1.0.0</Version>
-    <PackageReleaseNotes>初版：封装 Workbook / Worksheet / Cell 三张表；建表 SQL 内嵌为程序集资源。</PackageReleaseNotes>
+    <Version>1.1.0</Version>
+    <PackageReleaseNotes>1.1.0：CellRow 增加 getLocalAdress/FullAdress 地址计算，FullAdress 按 Excel 规则为工作表名自动加引号；契约收紧：Workbook 表恒有一行且名称非空，WorkbookData.Name 由 string option 改为 string，createDatabase 增加 name 参数，setWorkbookName 拒绝空名称，读取空表报错。</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/xp44mm/ExcelVSTO</PackageProjectUrl>
     <PackageTags>sqlite;excel;fsharp;workbook</PackageTags>
     <PackageReadmeFile>readme.md</PackageReadmeFile>

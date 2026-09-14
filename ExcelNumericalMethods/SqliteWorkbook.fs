@@ -106,7 +106,7 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
         |> Array.ofSeq
     WorkbookDb.save
         path
-        { Name = Some wb.Name
+        { Name = wb.Name
           Worksheets = worksheets
           Cells = cells }
 

@@ -73,7 +73,7 @@ type CellRow =
 
 /// 工作簿数据库的完整内容：名称、工作表、单元格
 type WorkbookData =
-    { Name: string option
+    { Name: string // 工作簿名称：契约保证 Workbook 表恒有一行且名称非空
       Worksheets: WorksheetRow[]
       Cells: CellRow[] }
 
@@ -120,12 +120,25 @@ module WorkbookDb =
         use cmd = new SQLiteCommand(createSchemaSql, conn)
         cmd.ExecuteNonQuery() |> ignore
 
-    /// 新建数据库文件：直接覆盖目标文件（不合并原有数据）并执行建表 SQL
-    let createDatabase (path: string) : unit =
+    /// 写入工作簿名称（先清空 Workbook 表再插入；名称非空，维持契约）
+    let setWorkbookName (tran: SQLiteTransaction) (name: string) : unit =
+        if String.IsNullOrEmpty name then
+            invalidArg "name" "工作簿名称不能为空：契约要求 Workbook 表恒有一行且名称非空"
+        use cmd = new SQLiteCommand("DELETE FROM Workbook;", tran.Connection, tran)
+        cmd.ExecuteNonQuery() |> ignore
+        use cmd = new SQLiteCommand("INSERT INTO Workbook (name) VALUES (@name);", tran.Connection, tran)
+        cmd.Parameters.AddWithValue("@name", name) |> ignore
+        cmd.ExecuteNonQuery() |> ignore
+
+    /// 新建数据库文件：直接覆盖目标文件（不合并原有数据），执行建表 SQL 并立即写入工作簿名称
+    let createDatabase (path: string) (name: string) : unit =
         if System.IO.File.Exists path then
             System.IO.File.Delete path
         use conn = openConnection path
         createSchema conn
+        use tran = conn.BeginTransaction()
+        setWorkbookName tran name
+        tran.Commit()
 
     /// 在单个事务中执行写入操作：成功提交，异常时回滚并释放连接
     let withTransaction (path: string) (action: SQLiteTransaction -> 'T) : 'T =
@@ -137,11 +150,12 @@ module WorkbookDb =
 
     // ---------- 读取 ----------
 
-    /// 读取工作簿名称（Workbook 表为单行表）
-    let getWorkbookName (conn: SQLiteConnection) : string option =
+    /// 读取工作簿名称（契约保证 Workbook 表恒有一行；空表视为违反契约）
+    let getWorkbookName (conn: SQLiteConnection) : string =
         use cmd = new SQLiteCommand("SELECT name FROM Workbook;", conn)
         use r = cmd.ExecuteReader()
-        if r.Read() then Some(r.GetString 0) else None
+        if r.Read() then r.GetString 0
+        else failwith "Workbook 表为空：不满足恒有一行且名称非空的契约，数据库可能由旧版本创建"
 
     /// 按 position 升序读取全部工作表
     let getWorksheets (conn: SQLiteConnection) : WorksheetRow[] =
@@ -198,14 +212,6 @@ module WorkbookDb =
 
     // ---------- 写入 ----------
 
-    /// 写入工作簿名称（先清空 Workbook 表再插入）
-    let setWorkbookName (tran: SQLiteTransaction) (name: string) : unit =
-        use cmd = new SQLiteCommand("DELETE FROM Workbook;", tran.Connection, tran)
-        cmd.ExecuteNonQuery() |> ignore
-        use cmd = new SQLiteCommand("INSERT INTO Workbook (name) VALUES (@name);", tran.Connection, tran)
-        cmd.Parameters.AddWithValue("@name", name) |> ignore
-        cmd.ExecuteNonQuery() |> ignore
-
     /// 插入一条工作表记录
     let insertWorksheet (tran: SQLiteTransaction) (ws: WorksheetRow) : unit =
         use cmd =
@@ -244,9 +250,7 @@ module WorkbookDb =
         use conn = openConnection path
         createSchema conn
         use tran = conn.BeginTransaction()
-        match data.Name with
-        | Some name -> setWorkbookName tran name
-        | None -> ()
+        setWorkbookName tran data.Name
         data.Worksheets |> Array.iter (insertWorksheet tran)
         data.Cells |> Array.iter (insertCell tran)
         tran.Commit()

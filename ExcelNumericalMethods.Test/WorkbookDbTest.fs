@@ -31,7 +31,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
         let path = tempPath()
         try
             let data =
-                { Name = Some "测试工作簿"
+                { Name = "测试工作簿"
                   Worksheets =
                     [| { Position = 1; Name = "Sheet1" }
                        { Position = 2; Name = "Sheet2" } |]
@@ -63,7 +63,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
     member this.``createDatabase后事务写入并读取``() =
         let path = tempPath()
         try
-            WorkbookDb.createDatabase path
+            WorkbookDb.createDatabase path "测试库"
             WorkbookDb.withTransaction path (fun tran ->
                 WorkbookDb.insertWorksheet tran { Position = 1; Name = "S1" }
                 WorkbookDb.insertCell tran
@@ -74,7 +74,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                       NumberFormat = WorkbookDb.DefaultNumberFormat })
             WorkbookDb.withConnection path (fun conn ->
                 let name = WorkbookDb.getWorkbookName conn
-                Assert.Null(name)
+                Assert.Equal("测试库", name)
                 let sheets = WorkbookDb.getWorksheets conn
                 Assert.Equal(1, sheets.Length)
                 Assert.Equal({ Position = 1; Name = "S1" }, sheets.[0])
@@ -91,7 +91,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
     member this.``违反外键约束时写入失败``() =
         let path = tempPath()
         try
-            WorkbookDb.createDatabase path
+            WorkbookDb.createDatabase path "测试库"
             Assert.Throws<System.Data.SQLite.SQLiteException>(fun () ->
                 WorkbookDb.withTransaction path (fun tran ->
                     WorkbookDb.insertCell tran
@@ -107,7 +107,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
     member this.``NumberFormat省略时默认General且formula不能为NULL``() =
         let path = tempPath()
         try
-            WorkbookDb.createDatabase path
+            WorkbookDb.createDatabase path "测试库"
             WorkbookDb.withTransaction path (fun tran ->
                 WorkbookDb.insertWorksheet tran { Position = 1; Name = "S1" })
             WorkbookDb.withConnection path (fun conn ->

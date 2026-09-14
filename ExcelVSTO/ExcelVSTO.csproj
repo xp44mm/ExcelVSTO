@@ -112,9 +112,6 @@
     <Reference Include="FSharp.Idioms, Version=1.5.17.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\FSharp.Idioms.1.5.17\lib\netstandard2.0\FSharp.Idioms.dll</HintPath>
     </Reference>
-    <Reference Include="FslexFsyacc, Version=1.5.6.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\FslexFsyacc.1.5.6\lib\netstandard2.0\FslexFsyacc.dll</HintPath>
-    </Reference>
     <Reference Include="MahApps.Metro, Version=2.0.0.0, Culture=neutral, PublicKeyToken=51482d6f650b2b3f, processorArchitecture=MSIL">
       <HintPath>..\packages\MahApps.Metro.2.4.11\lib\net47\MahApps.Metro.dll</HintPath>
     </Reference>
@@ -285,14 +282,14 @@
     </VisualStudio>
   </ProjectExtensions>
   <Import Project="..\packages\System.Reactive.7.0.0\build\System.Reactive.targets" Condition="Exists('..\packages\System.Reactive.7.0.0\build\System.Reactive.targets')" />
-<Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
+  <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\System.Reactive.7.0.0\build\System.Reactive.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Reactive.7.0.0\build\System.Reactive.targets'))" />
     <Error Condition="!Exists('..\packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets'))" />
-<Error Condition="!Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets'))" />
+    <Error Condition="!Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets'))" />
   </Target>
   <Import Project="..\packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets" Condition="Exists('..\packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets')" />
 </Project>

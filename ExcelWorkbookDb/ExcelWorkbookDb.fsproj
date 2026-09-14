@@ -5,12 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="create_excel_db.sql" LogicalName="ExcelWorkbookDb.create_excel_db.sql" />
     <Compile Include="WorkbookDb.fs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="create_excel_db.sql" LogicalName="ExcelWorkbookDb.create_excel_db.sql" />
-  </ItemGroup>
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" />

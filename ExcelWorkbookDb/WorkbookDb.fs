@@ -1,5 +1,5 @@
 ﻿///工作簿 SQLite 数据库访问包装库（netstandard2.0）
-///数据库结构见解决方案根目录的 create_excel_db.sql，共三张表：
+///数据库结构见本项目的 create_excel_db.sql，共三张表：
 ///  Workbook  工作簿的名称
 ///  Worksheet 工作表的顺序和名称
 ///  Cell      单元格：所在工作表、行地址、列地址、公式、格式
@@ -31,7 +31,7 @@ type WorkbookData =
 /// 数据库访问包装：封装 Workbook / Worksheet / Cell 三张表的参数化读写
 module WorkbookDb =
 
-    /// 内嵌建表 SQL 的资源名（唯一事实来源：解决方案根目录的 create_excel_db.sql）
+    /// 内嵌建表 SQL 的资源名（唯一事实来源：本项目的 create_excel_db.sql）
     let [<Literal>] private SchemaResourceName = "ExcelWorkbookDb.create_excel_db.sql"
 
     /// 建表 SQL：编译期内嵌为程序集资源，运行时从资源读取

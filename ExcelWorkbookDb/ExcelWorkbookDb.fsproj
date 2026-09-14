@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\create_excel_db.sql" Link="create_excel_db.sql" LogicalName="ExcelWorkbookDb.create_excel_db.sql" />
+    <EmbeddedResource Include="create_excel_db.sql" LogicalName="ExcelWorkbookDb.create_excel_db.sql" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,21 +9,21 @@ type WorkbookDbTest(output: ITestOutputHelper) =
     let tempPath () =
         System.IO.Path.Combine(System.IO.Path.GetTempPath(), System.Guid.NewGuid().ToString("N") + ".db")
 
-    /// 从运行目录向上查找包含 create_excel_db.sql 的解决方案根目录
-    let rec findSolutionRoot (dir: string) =
-        if System.IO.File.Exists(System.IO.Path.Combine(dir, "create_excel_db.sql")) then
+    /// 从运行目录向上查找包含 ExcelWorkbookDb\create_excel_db.sql 的项目根目录
+    let rec findProjectRoot (dir: string) =
+        if System.IO.File.Exists(System.IO.Path.Combine(dir, "ExcelWorkbookDb", "create_excel_db.sql")) then
             dir
         else
             let parent = System.IO.Directory.GetParent(dir)
             if isNull parent then
-                failwith "向上找不到 create_excel_db.sql"
+                failwith "向上找不到 ExcelWorkbookDb\create_excel_db.sql"
             else
-                findSolutionRoot parent.FullName
+                findProjectRoot parent.FullName
 
     [<Fact>]
     member this.``内嵌建表SQL与create_excel_db.sql一致``() =
-        let root = findSolutionRoot System.AppContext.BaseDirectory
-        let expected = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "create_excel_db.sql"))
+        let root = findProjectRoot System.AppContext.BaseDirectory
+        let expected = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "ExcelWorkbookDb", "create_excel_db.sql"))
         Assert.Equal(expected, WorkbookDb.createSchemaSql)
 
     [<Fact>]

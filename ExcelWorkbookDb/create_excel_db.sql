@@ -1,6 +1,6 @@
 ﻿-- Excel 数据库结构（ExcelVSTO 插件：工作簿另存为SQLite / 从SQLite创建工作簿）
 -- 一个数据库文件对应一个工作簿；另存时整体覆盖文件，不合并原有数据。
--- 本文件是建表 SQL 的唯一事实来源：编译时被 ExcelNumericalMethods 项目内嵌为程序集资源，SqliteWorkbook.fs 运行时从资源读取。
+-- 本文件是建表 SQL 的唯一事实来源：编译时被 ExcelWorkbookDb 项目内嵌为程序集资源，WorkbookDb.fs 运行时从资源读取。
 -- 三张表：
 --   Workbook  工作簿的名称
 --   Worksheet 工作表的顺序和名称

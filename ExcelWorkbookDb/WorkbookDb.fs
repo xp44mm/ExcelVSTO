@@ -19,8 +19,8 @@ type CellRow =
     { Worksheet: string // 所在工作表名称
       Row: int // 行地址，从 1 开始
       Col: int // 列地址，从 1 开始
-      Formula: string option // 单元格内容：公式或文本形式的值
-      NumberFormat: string option } // 数字格式（对应 Excel API Range.NumberFormat）
+      Formula: string // 单元格内容：公式或文本形式的值；公式为空则该单元格不写入
+      NumberFormat: string } // 数字格式（对应 Excel API Range.NumberFormat；无格式时为 General）
 
 /// 工作簿数据库的完整内容：名称、工作表、单元格
 type WorkbookData =
@@ -44,6 +44,9 @@ module WorkbookDb =
                 SchemaResourceName
         use reader = new System.IO.StreamReader(stream)
         reader.ReadToEnd()
+
+    /// 无数字格式时的默认值（与 Excel 的 General 格式一致）
+    let [<Literal>] DefaultNumberFormat = "General"
 
     /// 生成连接字符串
     let connectionString (path: string) : string =
@@ -115,8 +118,8 @@ module WorkbookDb =
                     { Worksheet = r.GetString 0
                       Row = r.GetInt32 1
                       Col = r.GetInt32 2
-                      Formula = if r.IsDBNull 3 then None else Some(r.GetString 3)
-                      NumberFormat = if r.IsDBNull 4 then None else Some(r.GetString 4) }
+                      Formula = if r.IsDBNull 3 then "" else r.GetString 3
+                      NumberFormat = if r.IsDBNull 4 then DefaultNumberFormat else r.GetString 4 }
         |]
 
     /// 读取指定工作表的单元格
@@ -133,8 +136,8 @@ module WorkbookDb =
                     { Worksheet = worksheet
                       Row = r.GetInt32 0
                       Col = r.GetInt32 1
-                      Formula = if r.IsDBNull 2 then None else Some(r.GetString 2)
-                      NumberFormat = if r.IsDBNull 3 then None else Some(r.GetString 3) }
+                      Formula = if r.IsDBNull 2 then "" else r.GetString 2
+                      NumberFormat = if r.IsDBNull 3 then DefaultNumberFormat else r.GetString 3 }
         |]
 
     /// 读取数据库的完整内容
@@ -145,12 +148,6 @@ module WorkbookDb =
               Cells = getCells conn })
 
     // ---------- 写入 ----------
-
-    /// string option -> obj（None 转为 DBNull.Value）
-    let private nullable (v: string option) : obj =
-        match v with
-        | Some s -> box s
-        | None -> box DBNull.Value
 
     /// 写入工作簿名称（先清空 Workbook 表再插入）
     let setWorkbookName (tran: SQLiteTransaction) (name: string) : unit =
@@ -181,8 +178,8 @@ module WorkbookDb =
         cmd.Parameters.AddWithValue("@worksheet", cell.Worksheet) |> ignore
         cmd.Parameters.AddWithValue("@row", cell.Row) |> ignore
         cmd.Parameters.AddWithValue("@col", cell.Col) |> ignore
-        cmd.Parameters.AddWithValue("@formula", nullable cell.Formula) |> ignore
-        cmd.Parameters.AddWithValue("@NumberFormat", nullable cell.NumberFormat) |> ignore
+        cmd.Parameters.AddWithValue("@formula", cell.Formula) |> ignore
+        cmd.Parameters.AddWithValue("@NumberFormat", cell.NumberFormat) |> ignore
         cmd.ExecuteNonQuery() |> ignore
 
     /// 清空三张表（保留表结构），用于整体覆盖写入而不重建文件

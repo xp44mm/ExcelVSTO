@@ -89,8 +89,8 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
                                     { Worksheet = ws.Name
                                       Row = r
                                       Col = c
-                                      Formula = Some f
-                                      NumberFormat = if isNull fmt then None else Some fmt }
+                                      Formula = f
+                                      NumberFormat = if isNull fmt then WorkbookDb.DefaultNumberFormat else fmt }
                 }
             else
                 Seq.empty)
@@ -130,13 +130,9 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
             for cell in rows do
                 let excelCell = sheet.Cells.[cell.Row, cell.Col] :?> Range
                 // 先设数字格式再写公式：格式为文本(@)时值按文本保存
-                match cell.NumberFormat with
-                | Some numberFormat ->
-                    try excelCell.NumberFormat <- numberFormat with _ -> ()
-                | None -> ()
-                match cell.Formula with
-                | Some formula -> excelCell.Formula <- formula
-                | None -> ())
+                try excelCell.NumberFormat <- cell.NumberFormat with _ -> ()
+                if not (String.IsNullOrEmpty cell.Formula) then
+                    excelCell.Formula <- cell.Formula)
     // 删除多余的空白工作表
     let oldCount = sheets.Count
     if oldCount > data.Worksheets.Length then

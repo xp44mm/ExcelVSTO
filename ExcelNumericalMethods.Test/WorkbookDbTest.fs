@@ -39,18 +39,18 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                     [| { Worksheet = "Sheet1"
                          Row = 1
                          Col = 1
-                         Formula = Some "=1+1"
-                         NumberFormat = Some "0.00" }
+                         Formula = "=1+1"
+                         NumberFormat = "0.00" }
                        { Worksheet = "Sheet1"
                          Row = 2
                          Col = 1
-                         Formula = Some "abc"
-                         NumberFormat = None }
+                         Formula = "abc"
+                         NumberFormat = WorkbookDb.DefaultNumberFormat }
                        { Worksheet = "Sheet2"
                          Row = 1
                          Col = 1
-                         Formula = None
-                         NumberFormat = None } |] }
+                         Formula = ""
+                         NumberFormat = WorkbookDb.DefaultNumberFormat } |] }
             WorkbookDb.save path data
             let actual = WorkbookDb.load path
             Assert.Equal(data.Name, actual.Name)
@@ -70,8 +70,8 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                     { Worksheet = "S1"
                       Row = 3
                       Col = 2
-                      Formula = Some "=A1"
-                      NumberFormat = None })
+                      Formula = "=A1"
+                      NumberFormat = WorkbookDb.DefaultNumberFormat })
             WorkbookDb.withConnection path (fun conn ->
                 let name = WorkbookDb.getWorkbookName conn
                 Assert.Null(name)
@@ -82,8 +82,8 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                 Assert.Single(cells) |> ignore
                 Assert.Equal(3, cells.[0].Row)
                 Assert.Equal(2, cells.[0].Col)
-                Assert.Equal(Some "=A1", cells.[0].Formula)
-                Assert.Equal(None, cells.[0].NumberFormat))
+                Assert.Equal("=A1", cells.[0].Formula)
+                Assert.Equal(WorkbookDb.DefaultNumberFormat, cells.[0].NumberFormat))
         finally
             System.IO.File.Delete path
 
@@ -98,8 +98,36 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                         { Worksheet = "不存在的表"
                           Row = 1
                           Col = 1
-                          Formula = Some "=1"
-                          NumberFormat = None }))
+                          Formula = "=1"
+                          NumberFormat = WorkbookDb.DefaultNumberFormat }))
             |> ignore
+        finally
+            System.IO.File.Delete path
+    [<Fact>]
+    member this.``NumberFormat省略时默认General且formula不能为NULL``() =
+        let path = tempPath()
+        try
+            WorkbookDb.createDatabase path
+            WorkbookDb.withTransaction path (fun tran ->
+                WorkbookDb.insertWorksheet tran { Position = 1; Name = "S1" })
+            WorkbookDb.withConnection path (fun conn ->
+                // 省略 NumberFormat 列：应取默认值 General
+                use cmd =
+                    new System.Data.SQLite.SQLiteCommand(
+                        "INSERT INTO Cell (worksheet, row, col, formula) VALUES ('S1', 1, 1, '=1');",
+                        conn)
+                cmd.ExecuteNonQuery() |> ignore
+                // formula 为 NULL 违反 NOT NULL 约束
+                Assert.Throws<System.Data.SQLite.SQLiteException>(fun () ->
+                    use cmd2 =
+                        new System.Data.SQLite.SQLiteCommand(
+                            "INSERT INTO Cell (worksheet, row, col, formula) VALUES ('S1', 1, 2, NULL);",
+                            conn)
+                    cmd2.ExecuteNonQuery() |> ignore)
+                |> ignore)
+            let data = WorkbookDb.load path
+            Assert.Equal(1, data.Cells.Length)
+            Assert.Equal("=1", data.Cells.[0].Formula)
+            Assert.Equal(WorkbookDb.DefaultNumberFormat, data.Cells.[0].NumberFormat)
         finally
             System.IO.File.Delete path

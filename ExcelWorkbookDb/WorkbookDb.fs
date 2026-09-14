@@ -9,6 +9,40 @@ namespace ExcelWorkbookDb
 open System
 open System.Data.SQLite
 
+/// 工作表名公式引用格式化（文件私有）
+module private SheetNameFormat =
+
+    /// 判断工作表名在公式引用中是否必须加单引号（规则按真实 Excel 行为验证）
+    let needsQuote (name: string) : bool =
+        if String.IsNullOrEmpty name then true
+        else
+            // 含字母、数字、下划线、点号以外的字符时必须加引号（空格、连字符、&、括号、撇号等）
+            let hasSpecial =
+                name |> Seq.exists (fun ch -> not (Char.IsLetterOrDigit ch) && ch <> '_' && ch <> '.')
+            if hasSpecial then true
+            else
+                let upper = name.ToUpperInvariant()
+                // 形如 A1 式有效单元格引用（1~3 个字母后跟数字，如 A1、XFD1048576；Sheet1、ABCD1 不用引号）
+                let isA1Ref =
+                    System.Text.RegularExpressions.Regex.IsMatch(name, "^[A-Za-z]{1,3}[0-9]+$")
+                // R1C1 引用形态（R、R1、RC、R1C、R1C1 及单字母 C）
+                let isR1C1Ref =
+                    System.Text.RegularExpressions.Regex.IsMatch(
+                        name,
+                        "^R[0-9]*C?[0-9]*$",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                    || upper = "C"
+                // 数字开头（123、1A、1.5）或布尔字面量 TRUE/FALSE
+                upper = "TRUE"
+                || upper = "FALSE"
+                || Char.IsDigit name.[0]
+                || isA1Ref
+                || isR1C1Ref
+
+    /// 工作表名按公式引用规则格式化：需要时用单引号包裹，内部单引号翻倍
+    let quoteSheetName (name: string) : string =
+        if needsQuote name then "'" + name.Replace("'", "''") + "'" else name
+
 /// 工作表记录：对应 Worksheet 表
 type WorksheetRow =
     { Position: int // 工作表顺序，从 1 开始
@@ -33,9 +67,9 @@ type CellRow =
                 let letter = string (char (int 'A' + remainder))
                 columnLetters quotient (letter + acc)
         columnLetters this.Col "" + string this.Row
-      /// 计算单元格的完整 Excel 地址（如 Sheet1!A1、Sheet2!B2 等）
+      /// 计算单元格的完整 Excel 地址（如 Sheet1!A1、'My Sheet'!A1 等）；工作表名按公式引用规则自动加引号
       member this.FullAdress() : string =
-        this.Worksheet + "!" + this.getLocalAdress()
+        SheetNameFormat.quoteSheetName this.Worksheet + "!" + this.getLocalAdress()
 
 /// 工作簿数据库的完整内容：名称、工作表、单元格
 type WorkbookData =

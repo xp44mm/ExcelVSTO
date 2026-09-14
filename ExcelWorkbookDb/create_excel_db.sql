@@ -4,7 +4,7 @@
 -- 三张表：
 --   Workbook  工作簿的名称
 --   Worksheet 工作表的顺序和名称
---   Cell      单元格：所在工作表、行地址、列地址、公式、格式
+--   Cell      单元格：所在工作表、行地址、列地址、公式、数字格式
 
 CREATE TABLE Workbook (
     name TEXT PRIMARY KEY
@@ -21,7 +21,7 @@ CREATE TABLE Cell (
     row       INTEGER NOT NULL,     -- 行地址，从 1 开始
     col       INTEGER NOT NULL,     -- 列地址，从 1 开始
     formula   TEXT,                 -- 单元格内容：公式或文本形式的值
-    format    TEXT,                 -- 单元格格式（数字格式）
+    NumberFormat TEXT,             -- 数字格式（对应 Excel API Range.NumberFormat）
     PRIMARY KEY (worksheet, row, col),
     -- 外键约束：Cell.worksheet 引用 Worksheet.name（Line 15 字段）
     CONSTRAINT fk_cell_worksheet FOREIGN KEY (worksheet) REFERENCES Worksheet(name)

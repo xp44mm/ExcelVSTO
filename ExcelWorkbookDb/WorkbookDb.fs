@@ -1,9 +1,9 @@
-﻿///工作簿 SQLite 数据库访问包装库（netstandard2.0）
-///数据库结构见本项目的 create_excel_db.sql，共三张表：
-///  Workbook  工作簿的名称
-///  Worksheet 工作表的顺序和名称
-///  Cell      单元格：所在工作表、行地址、列地址、公式、格式
-///本库只封装数据库访问，不依赖 Excel 互操作，可被任意 netstandard2.0 应用引用。
+﻿//工作簿 SQLite 数据库访问包装库（netstandard2.0）
+//数据库结构见本项目的 create_excel_db.sql，共三张表：
+//  Workbook  工作簿的名称
+//  Worksheet 工作表的顺序和名称
+//  Cell      单元格：所在工作表、行地址、列地址、公式、数字格式
+//本库只封装数据库访问，不依赖 Excel 互操作，可被任意 netstandard2.0 应用引用。
 namespace ExcelWorkbookDb
 
 open System
@@ -20,7 +20,7 @@ type CellRow =
       Row: int // 行地址，从 1 开始
       Col: int // 列地址，从 1 开始
       Formula: string option // 单元格内容：公式或文本形式的值
-      Format: string option } // 单元格格式（数字格式）
+      NumberFormat: string option } // 数字格式（对应 Excel API Range.NumberFormat）
 
 /// 工作簿数据库的完整内容：名称、工作表、单元格
 type WorkbookData =
@@ -106,7 +106,7 @@ module WorkbookDb =
     let getCells (conn: SQLiteConnection) : CellRow[] =
         use cmd =
             new SQLiteCommand(
-                "SELECT worksheet, row, col, formula, format FROM Cell ORDER BY worksheet, row, col;",
+                "SELECT worksheet, row, col, formula, NumberFormat FROM Cell ORDER BY worksheet, row, col;",
                 conn)
         use r = cmd.ExecuteReader()
         [|
@@ -116,14 +116,14 @@ module WorkbookDb =
                       Row = r.GetInt32 1
                       Col = r.GetInt32 2
                       Formula = if r.IsDBNull 3 then None else Some(r.GetString 3)
-                      Format = if r.IsDBNull 4 then None else Some(r.GetString 4) }
+                      NumberFormat = if r.IsDBNull 4 then None else Some(r.GetString 4) }
         |]
 
     /// 读取指定工作表的单元格
     let getCellsOf (conn: SQLiteConnection) (worksheet: string) : CellRow[] =
         use cmd =
             new SQLiteCommand(
-                "SELECT row, col, formula, format FROM Cell WHERE worksheet = @worksheet ORDER BY row, col;",
+                "SELECT row, col, formula, NumberFormat FROM Cell WHERE worksheet = @worksheet ORDER BY row, col;",
                 conn)
         cmd.Parameters.AddWithValue("@worksheet", worksheet) |> ignore
         use r = cmd.ExecuteReader()
@@ -134,7 +134,7 @@ module WorkbookDb =
                       Row = r.GetInt32 0
                       Col = r.GetInt32 1
                       Formula = if r.IsDBNull 2 then None else Some(r.GetString 2)
-                      Format = if r.IsDBNull 3 then None else Some(r.GetString 3) }
+                      NumberFormat = if r.IsDBNull 3 then None else Some(r.GetString 3) }
         |]
 
     /// 读取数据库的完整内容
@@ -175,14 +175,14 @@ module WorkbookDb =
     let insertCell (tran: SQLiteTransaction) (cell: CellRow) : unit =
         use cmd =
             new SQLiteCommand(
-                "INSERT INTO Cell (worksheet, row, col, formula, format) VALUES (@worksheet, @row, @col, @formula, @format);",
+                "INSERT INTO Cell (worksheet, row, col, formula, NumberFormat) VALUES (@worksheet, @row, @col, @formula, @NumberFormat);",
                 tran.Connection,
                 tran)
         cmd.Parameters.AddWithValue("@worksheet", cell.Worksheet) |> ignore
         cmd.Parameters.AddWithValue("@row", cell.Row) |> ignore
         cmd.Parameters.AddWithValue("@col", cell.Col) |> ignore
         cmd.Parameters.AddWithValue("@formula", nullable cell.Formula) |> ignore
-        cmd.Parameters.AddWithValue("@format", nullable cell.Format) |> ignore
+        cmd.Parameters.AddWithValue("@NumberFormat", nullable cell.NumberFormat) |> ignore
         cmd.ExecuteNonQuery() |> ignore
 
     /// 清空三张表（保留表结构），用于整体覆盖写入而不重建文件

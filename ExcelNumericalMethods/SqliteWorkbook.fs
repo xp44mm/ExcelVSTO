@@ -2,7 +2,7 @@
 ///数据库结构见 ExcelWorkbookDb 项目的 create_excel_db.sql，共三张表：
 ///  Workbook  工作簿的名称
 ///  Worksheet 工作表的顺序和名称
-///  Cell      单元格：所在工作表、行地址、列地址、公式、格式
+///  Cell      单元格：所在工作表、行地址、列地址、公式、数字格式
 ///本模块只负责 Excel 互操作；数据库读写全部委托给 ExcelWorkbookDb 包装库。
 module ExcelNumericalMethods.SqliteWorkbook
 
@@ -90,7 +90,7 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
                                       Row = r
                                       Col = c
                                       Formula = Some f
-                                      Format = if isNull fmt then None else Some fmt }
+                                      NumberFormat = if isNull fmt then None else Some fmt }
                 }
             else
                 Seq.empty)
@@ -130,9 +130,9 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
             for cell in rows do
                 let excelCell = sheet.Cells.[cell.Row, cell.Col] :?> Range
                 // 先设数字格式再写公式：格式为文本(@)时值按文本保存
-                match cell.Format with
-                | Some format ->
-                    try excelCell.NumberFormat <- format with _ -> ()
+                match cell.NumberFormat with
+                | Some numberFormat ->
+                    try excelCell.NumberFormat <- numberFormat with _ -> ()
                 | None -> ()
                 match cell.Formula with
                 | Some formula -> excelCell.Formula <- formula

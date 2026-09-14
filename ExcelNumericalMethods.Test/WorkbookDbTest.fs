@@ -40,17 +40,17 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                          Row = 1
                          Col = 1
                          Formula = Some "=1+1"
-                         Format = Some "0.00" }
+                         NumberFormat = Some "0.00" }
                        { Worksheet = "Sheet1"
                          Row = 2
                          Col = 1
                          Formula = Some "abc"
-                         Format = None }
+                         NumberFormat = None }
                        { Worksheet = "Sheet2"
                          Row = 1
                          Col = 1
                          Formula = None
-                         Format = None } |] }
+                         NumberFormat = None } |] }
             WorkbookDb.save path data
             let actual = WorkbookDb.load path
             Assert.Equal(data.Name, actual.Name)
@@ -71,7 +71,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                       Row = 3
                       Col = 2
                       Formula = Some "=A1"
-                      Format = None })
+                      NumberFormat = None })
             WorkbookDb.withConnection path (fun conn ->
                 let name = WorkbookDb.getWorkbookName conn
                 Assert.Null(name)
@@ -83,7 +83,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                 Assert.Equal(3, cells.[0].Row)
                 Assert.Equal(2, cells.[0].Col)
                 Assert.Equal(Some "=A1", cells.[0].Formula)
-                Assert.Equal(None, cells.[0].Format))
+                Assert.Equal(None, cells.[0].NumberFormat))
         finally
             System.IO.File.Delete path
 
@@ -99,7 +99,7 @@ type WorkbookDbTest(output: ITestOutputHelper) =
                           Row = 1
                           Col = 1
                           Formula = Some "=1"
-                          Format = None }))
+                          NumberFormat = None }))
             |> ignore
         finally
             System.IO.File.Delete path

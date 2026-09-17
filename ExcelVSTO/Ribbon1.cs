@@ -306,7 +306,15 @@ namespace ExcelVSTO
                     var wb = ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom(Globals.ThisAddIn.Application, dlg.FileName);
                     wb.Activate();
                     var suggestedPath = System.IO.Path.ChangeExtension(dlg.FileName, ".xlsx");
-                    MessageBox.Show("已从数据库创建新工作簿。\n建议保存路径（可全选复制）：\n" + suggestedPath);
+                    try
+                    {
+                        System.Windows.Forms.Clipboard.SetText(suggestedPath);
+                        MessageBox.Show("已从数据库创建新工作簿。\n建议保存路径已复制到剪贴板（可直接粘贴）：\n" + suggestedPath);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("已从数据库创建新工作簿。\n建议保存路径（复制到剪贴板失败，请手动记录）：\n" + suggestedPath);
+                    }
                 }
                 catch (Exception ex)
                 {

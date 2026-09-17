@@ -104,7 +104,6 @@
   -->
   <ItemGroup>
     <Reference Include="Accessibility" />
-
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -113,7 +112,6 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
-
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows" />
@@ -134,7 +132,6 @@
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.158" />
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetFramework" Version="1.0.119" />
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" ExcludeAssets="all" />
-    <PackageReference Include="System.Reactive" Version="7.0.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageReference Include="System.ValueTuple" Version="4.6.2" />
@@ -201,7 +198,6 @@
     <EmbeddedResource Include="Ribbon1.resx">
       <DependentUpon>Ribbon1.cs</DependentUpon>
     </EmbeddedResource>
-
     <None Include="app.config" />
     <None Include="ExcelVSTO_TemporaryKey.pfx" />
     <None Include="Properties\Settings.settings">
@@ -268,4 +264,4 @@
       </FlavorProperties>
     </VisualStudio>
   </ProjectExtensions>
-  </Project>
+</Project>

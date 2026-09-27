@@ -125,11 +125,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ControlzEx" Version="5.0.2" />
+    <PackageReference Include="ControlzEx" Version="4.4.0" />
     <PackageReference Include="FSharp.Core" Version="10.1.401" />
     <PackageReference Include="FSharp.Idioms" Version="1.5.17" />
     <PackageReference Include="MahApps.Metro" Version="2.4.11" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.158" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.161" />
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetFramework" Version="1.0.119" />
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" ExcludeAssets="all" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />

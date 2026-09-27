@@ -15,7 +15,7 @@
 
     <ItemGroup>
         <PackageReference Include="FSharp.xUnit" Version="1.4.1" />
-        <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.0" />
+        <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.1" />
         <PackageReference Update="FSharp.Core" Version="10.1.302" />
 
     </ItemGroup>

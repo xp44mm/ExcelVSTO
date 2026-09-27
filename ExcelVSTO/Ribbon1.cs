@@ -305,16 +305,10 @@ namespace ExcelVSTO
                 {
                     var wb = ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom(Globals.ThisAddIn.Application, dlg.FileName);
                     wb.Activate();
-                    var suggestedPath = System.IO.Path.ChangeExtension(dlg.FileName, ".xlsx");
-                    try
-                    {
-                        System.Windows.Forms.Clipboard.SetText(suggestedPath);
-                        MessageBox.Show("已从数据库创建新工作簿。\n建议保存路径已复制到剪贴板（可直接粘贴）：\n" + suggestedPath);
-                    }
-                    catch
-                    {
-                        MessageBox.Show("已从数据库创建新工作簿。\n建议保存路径（复制到剪贴板失败，请手动记录）：\n" + suggestedPath);
-                    }
+                    // 保存为与数据库文件同路径、同名称、仅扩展名为 .xlsx 的文件
+                    var savePath = System.IO.Path.ChangeExtension(dlg.FileName, ".xlsx");
+                    wb.SaveAs(savePath);
+                    MessageBox.Show("已从数据库创建新工作簿并保存为：\n" + savePath);
                 }
                 catch (Exception ex)
                 {

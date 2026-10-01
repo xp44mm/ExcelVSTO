@@ -326,12 +326,13 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 更新默认值：保留 IFERROR 公式结构，仅把兜底值替换为最新真值。
+        /// 更新默认值：扫描当前工作簿全部工作表，仅处理公式为
+        /// =IFERROR(标记函数(...), 常量) 的单元格：将兜底常量替换为该单元格最新真值，并以绿色标记。
         /// 直接在当前工作簿上位修改，不生成副本、不弹输入框与结果确认框（结果用状态栏提示）。
+        /// 核心逻辑（扫描、过滤、改写、标色、统计）在 F# 的 Publishing.updateDefaults 中实现。
         /// </summary>
         private void BtnUpdateDefaults_Click(object sender, RibbonControlEventArgs e)
         {
-            const string marker = "电机额定功率";
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
             if (wb == null)
@@ -342,10 +343,10 @@ namespace ExcelVSTO
 
             try
             {
-                var result = Publishing.run(true, wb, marker);
+                var result = Publishing.updateDefaults(wb);
                 if (result.FunctionMissing)
                 {
-                    app.StatusBar = $"本机无此函数「{marker}」，未更新任何单元格。";
+                    app.StatusBar = $"本机无此函数「{Publishing.DefaultMarker}」，未更新任何单元格。";
                 }
                 else if (result.ProcessedCount == 0
                          && result.ErrorCells.Length == 0
@@ -353,7 +354,7 @@ namespace ExcelVSTO
                          && result.ArrayFormulaCells.Length == 0
                          && result.ProtectedSheets.Length == 0)
                 {
-                    app.StatusBar = $"未找到包含「{marker}」的公式。";
+                    app.StatusBar = $"未找到包含「{Publishing.DefaultMarker}」的公式。";
                 }
                 else
                 {
@@ -364,7 +365,7 @@ namespace ExcelVSTO
                     }
                     if (result.UnconformCells.Length > 0)
                     {
-                        parts.Add($"跳过格式不符 {result.UnconformCells.Length} 个");
+                        parts.Add($"跳过格式不符/非常量兜底 {result.UnconformCells.Length} 个");
                     }
                     if (result.ArrayFormulaCells.Length > 0)
                     {

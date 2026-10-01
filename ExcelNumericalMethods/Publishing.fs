@@ -6,6 +6,7 @@ open Microsoft.Office.Interop.Excel
 
 /// 发布辅助：「脱公式」与「更新默认值」批量处理。
 /// 处理对象统一为 =IFERROR(标记函数(参数...), 兜底值) 结构；
+/// 更新默认值额外要求兜底值为常量字面量，仅替换该常量并以绿色标记；
 /// 脱公式在副本上进行，更新默认值在当前工作簿上位修改。
 module Publishing =
 
@@ -17,7 +18,7 @@ module Publishing =
           FunctionMissing: bool
           /// 当前为错误值而跳过的单元格（工作表!地址, 显示文本）
           ErrorCells: (string * string) array
-          /// 不符合 IFERROR(标记函数(...), 兜底) 结构而跳过的单元格（工作表!地址, 公式）
+          /// 不符合 IFERROR(标记函数(...), 兜底) 结构、或更新默认值时兜底不是常量字面量而跳过的单元格（工作表!地址, 公式）
           UnconformCells: (string * string) array
           /// 多格数组公式而跳过的单元格（工作表!地址, 公式）；单格数组公式按普通单元格处理
           ArrayFormulaCells: (string * string) array
@@ -70,8 +71,11 @@ module Publishing =
     /// 默认样板色：浅黄 FFEB9C（Excel COM 颜色为 BGR 顺序，即 0x009CEBFF）
     let [<Literal>] DefaultSampleColor = 0x009CEBFF
 
+    /// 更新默认值的标记色：绿色（RGB(146,208,80) 以 BGR 顺序编码为 0x0050D092）
+    let [<Literal>] UpdateDefaultsColor = 0x0050D092
+
     /// 取样板背景色：工作簿存在「设备选型!D12」且该单元格有背景填充时用其颜色，否则用默认浅黄。
-    /// 更新默认值给每个目标单元格设置该背景色，作为「已更新」标记。
+    /// 更新默认值的已更新标记色现为固定绿色 UpdateDefaultsColor，此函数仅供调试取样色。
     let sampleColor (wb: Workbook) : float =
         let sheet =
             Traversal.getWorksheets wb
@@ -167,6 +171,26 @@ module Publishing =
                             if arg1.Length = 0 || arg2.Length = 0 then None
                             else Some(arg1, arg2)
 
+    /// 判断 IFERROR 第二参数是否为常量字面量：
+    /// 数字（含小数、指数、正负号、百分号）、带双引号的字符串、TRUE/FALSE。
+    /// 单元格引用、命名区域、函数调用、运算符表达式等均视为非常量（返回 false）。
+    let isConstantLiteral (s: string) : bool =
+        let t = s.Trim()
+        if t.Length = 0 then false
+        elif t.StartsWith("\"", StringComparison.Ordinal) then
+            // 字符串字面量：以双引号开始、以双引号结束
+            t.Length >= 2 && t.EndsWith("\"", StringComparison.Ordinal)
+        elif String.Equals(t, "TRUE", StringComparison.OrdinalIgnoreCase)
+             || String.Equals(t, "FALSE", StringComparison.OrdinalIgnoreCase) then true
+        else
+            // 百分号是合法数字字面量后缀（如 50%），先去掉再解析
+            let body =
+                if t.EndsWith("%", StringComparison.Ordinal) then t.Substring(0, t.Length - 1)
+                else t
+            match Double.TryParse(body, NumberStyles.Float, CultureInfo.InvariantCulture) with
+            | true, _ -> true
+            | _ -> false
+
     /// 将真值格式化为公式字面量：
     /// 文本加双引号（内部双引号转义为两个双引号），数字按不变区域设置输出，布尔为 TRUE/FALSE。
     let formatLiteral (value: obj) : string =
@@ -226,8 +250,8 @@ module Publishing =
                 | _ -> System.Nullable(true)
             with _ -> System.Nullable(true)
 
-    /// 处理副本工作簿：
-    /// updateDefaults = true 时更新默认值（保留 IFERROR 结构，仅替换兜底值为最新真值）；
+    /// 批量处理工作簿：
+    /// updateDefaults = true 时更新默认值（保留 IFERROR 结构，仅当第二参数为常量时替换兜底值为最新真值，并以绿色标记）；
     /// updateDefaults = false 时脱公式（目标单元格固化为当前计算结果）。
     let run (updateDefaults: bool, wb: Workbook, marker: string) : RunResult =
         wb.Application.Calculate()
@@ -241,7 +265,6 @@ module Publishing =
         let unconform = ResizeArray<string * string>()
         let arrays = ResizeArray<string * string>()
         let protectedSheets = ResizeArray<string>()
-        let sample = sampleColor wb
         for ws in Traversal.getWorksheets wb do
             let address = cellAddress ws
             let isProtected = unbox ws.ProtectContents
@@ -274,15 +297,16 @@ module Publishing =
                                 if updateDefaults then
                                     let formula = string (cell.Formula)
                                     match splitIfError formula with
-                                    | Some (arg1, _) when
-                                        arg1.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0 ->
-                                        // 保留第一个参数，兜底值替换为最新真值；
+                                    | Some (arg1, arg2) when
+                                        arg1.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0
+                                        && isConstantLiteral arg2 ->
+                                        // 仅当第二参数为常量时处理：保留第一个参数，兜底值替换为最新真值；
                                         // 单格数组公式用 FormulaArray 写入以保持数组公式属性
                                         let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
                                         if unbox cell.HasArray then cell.FormulaArray <- newFormula
                                         else cell.Formula <- newFormula
-                                        // 以样板色标记已更新的目标单元格
-                                        cell.Interior.Color <- sample
+                                        // 以绿色标记已更新的目标单元格
+                                        cell.Interior.Color <- float UpdateDefaultsColor
                                         processed <- processed + 1
                                     | _ ->
                                         unconform.Add(address cell, formula)
@@ -301,6 +325,18 @@ module Publishing =
           ArrayFormulaCells = arrays.ToArray()
           ProtectedSheets = protectedSheets.ToArray() }
 
+    /// 更新默认值默认标记函数名（功能区「更新默认值」按钮使用，无需弹窗输入）
+    let [<Literal>] DefaultMarker = "电机额定功率"
+
+    /// 更新默认值：指定标记函数名。对当前工作簿在位修改，保留 IFERROR 结构，
+    /// 仅处理第二参数为常量字面量的单元格，将其替换为最新真值并以绿色标记。
+    let updateDefaultsWith (wb: Workbook, marker: string) : RunResult =
+        run (true, wb, marker)
+
+    /// 更新默认值：使用默认标记函数名 DefaultMarker
+    let updateDefaults (wb: Workbook) : RunResult =
+        updateDefaultsWith (wb, DefaultMarker)
+
     /// 生成处理结果提示文本
     let formatSummary (updateDefaults: bool, path: string, result: RunResult) : string =
         let sb = Text.StringBuilder()
@@ -313,7 +349,10 @@ module Publishing =
             for (addr, text) in result.ErrorCells do
                 sb.AppendLine(sprintf "  %s（%s）" addr text) |> ignore
         if result.UnconformCells.Length > 0 then
-            sb.AppendLine(sprintf "跳过不符合 IFERROR(标记函数(...), 兜底) 结构的单元格 %d 个：" result.UnconformCells.Length) |> ignore
+            let structDesc =
+                if updateDefaults then "IFERROR(标记函数(...), 常量)"
+                else "IFERROR(标记函数(...), 兜底)"
+            sb.AppendLine(sprintf "跳过不符合 %s 结构的单元格 %d 个：" structDesc result.UnconformCells.Length) |> ignore
             for (addr, formula) in result.UnconformCells do
                 sb.AppendLine(sprintf "  %s：%s" addr formula) |> ignore
         if result.ArrayFormulaCells.Length > 0 then

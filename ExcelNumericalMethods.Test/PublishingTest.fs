@@ -48,6 +48,41 @@ type PublishingTest(output : ITestOutputHelper) =
         Should.equal (Publishing.splitIfError "=IFERROR(, 2)") None
 
     [<Fact>]
+    member this.``isConstantLiteral 数字``() =
+        Should.equal (Publishing.isConstantLiteral "22") true
+        Should.equal (Publishing.isConstantLiteral "-1.5") true
+        Should.equal (Publishing.isConstantLiteral "+3") true
+        Should.equal (Publishing.isConstantLiteral "0") true
+        Should.equal (Publishing.isConstantLiteral "1E3") true
+        Should.equal (Publishing.isConstantLiteral "20%") true
+
+    [<Fact>]
+    member this.``isConstantLiteral 字符串``() =
+        Should.equal (Publishing.isConstantLiteral "\"无数据\"") true
+        Should.equal (Publishing.isConstantLiteral "\"\"") true
+        Should.equal (Publishing.isConstantLiteral "\"说\"\"好\"\"\"") true
+
+    [<Fact>]
+    member this.``isConstantLiteral 布尔``() =
+        Should.equal (Publishing.isConstantLiteral "TRUE") true
+        Should.equal (Publishing.isConstantLiteral "false") true
+
+    [<Fact>]
+    member this.``isConstantLiteral 引用与表达式为假``() =
+        Should.equal (Publishing.isConstantLiteral "E11") false
+        Should.equal (Publishing.isConstantLiteral "$E$11") false
+        Should.equal (Publishing.isConstantLiteral "MAX(0,1)") false
+        Should.equal (Publishing.isConstantLiteral "A1+1") false
+        Should.equal (Publishing.isConstantLiteral "1/0") false
+        Should.equal (Publishing.isConstantLiteral "无") false
+        Should.equal (Publishing.isConstantLiteral "") false
+
+    [<Fact>]
+    member this.``isConstantLiteral 保留前导后导空白``() =
+        Should.equal (Publishing.isConstantLiteral " 22 ") true
+        Should.equal (Publishing.isConstantLiteral " \"文本\" ") true
+
+    [<Fact>]
     member this.``formatLiteral 文本加双引号并转义内部双引号``() =
         Should.equal (Publishing.formatLiteral (box "22")) "\"22\""
         Should.equal (Publishing.formatLiteral (box "说\"好\"")) "\"说\"\"好\"\"\""

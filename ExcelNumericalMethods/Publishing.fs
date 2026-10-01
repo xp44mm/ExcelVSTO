@@ -6,7 +6,7 @@ open Microsoft.Office.Interop.Excel
 
 /// 发布辅助：「脱公式」与「更新默认值」批量处理。
 /// 处理对象统一为 =IFERROR(标记函数(参数...), 兜底值) 结构；
-/// 两个功能都在副本上进行，源工作簿不被修改。
+/// 脱公式在副本上进行，更新默认值在当前工作簿上位修改。
 module Publishing =
 
     /// 批量处理结果
@@ -19,7 +19,7 @@ module Publishing =
           ErrorCells: (string * string) array
           /// 不符合 IFERROR(标记函数(...), 兜底) 结构而跳过的单元格（工作表!地址, 公式）
           UnconformCells: (string * string) array
-          /// 数组公式而跳过的单元格（工作表!地址, 公式）
+          /// 多格数组公式而跳过的单元格（工作表!地址, 公式）；单格数组公式按普通单元格处理
           ArrayFormulaCells: (string * string) array
           /// 受保护且无法解除保护而跳过的工作表
           ProtectedSheets: string array }
@@ -60,6 +60,35 @@ module Publishing =
     let containsMarker (marker: string) (cell: Range) : bool =
         let formula = string (cell.Formula)
         formula.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0
+
+    /// 数组公式区域是否仅一个单元格。
+    /// 单格数组公式可安全处理（写入用 FormulaArray 保持数组属性），多格数组公式跳过避免破坏。
+    let isSingleCellArray (cell: Range) : bool =
+        let arr = cell.CurrentArray
+        arr.Rows.Count = 1 && arr.Columns.Count = 1
+
+    /// 默认样板色：浅黄 FFEB9C（Excel COM 颜色为 BGR 顺序，即 0x009CEBFF）
+    let [<Literal>] DefaultSampleColor = 0x009CEBFF
+
+    /// 取样板背景色：工作簿存在「设备选型!D12」且该单元格有背景填充时用其颜色，否则用默认浅黄。
+    /// 更新默认值给每个目标单元格设置该背景色，作为「已更新」标记。
+    let sampleColor (wb: Workbook) : float =
+        let sheet =
+            Traversal.getWorksheets wb
+            |> Seq.tryFind (fun w -> w.Name = "设备选型")
+        match sheet with
+        | None -> float DefaultSampleColor
+        | Some w ->
+            try
+                let cell = w.Cells.[12, 4] :?> Range
+                let pattern = cell.Interior.Pattern :?> XlPattern
+                if pattern = XlPattern.xlPatternNone then float DefaultSampleColor
+                else
+                    match box cell.Interior.Color with
+                    | :? float as f -> f
+                    | :? int as i -> float i
+                    | _ -> float DefaultSampleColor
+            with _ -> float DefaultSampleColor
 
     /// 是否为合并区域的左上角单元格（合并区域仅处理左上角，其余跳过）
     let isMergeTopLeft (cell: Range) : bool =
@@ -212,6 +241,7 @@ module Publishing =
         let unconform = ResizeArray<string * string>()
         let arrays = ResizeArray<string * string>()
         let protectedSheets = ResizeArray<string>()
+        let sample = sampleColor wb
         for ws in Traversal.getWorksheets wb do
             let address = cellAddress ws
             let isProtected = unbox ws.ProtectContents
@@ -225,8 +255,8 @@ module Publishing =
             else
                 for cell in getFormulaCells ws do
                     if containsMarker marker cell then
-                        if unbox cell.HasArray then
-                            // 数组公式单独识别，避免破坏
+                        if unbox cell.HasArray && not (isSingleCellArray cell) then
+                            // 多格数组公式跳过，避免破坏；单格数组公式按普通单元格处理
                             arrays.Add(address cell, string (cell.Formula))
                         elif not (isMergeTopLeft cell) then
                             () // 合并区域仅处理左上角
@@ -246,8 +276,13 @@ module Publishing =
                                     match splitIfError formula with
                                     | Some (arg1, _) when
                                         arg1.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0 ->
-                                        // 保留第一个参数，兜底值替换为最新真值
-                                        cell.Formula <- sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
+                                        // 保留第一个参数，兜底值替换为最新真值；
+                                        // 单格数组公式用 FormulaArray 写入以保持数组公式属性
+                                        let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
+                                        if unbox cell.HasArray then cell.FormulaArray <- newFormula
+                                        else cell.Formula <- newFormula
+                                        // 以样板色标记已更新的目标单元格
+                                        cell.Interior.Color <- sample
                                         processed <- processed + 1
                                     | _ ->
                                         unconform.Add(address cell, formula)

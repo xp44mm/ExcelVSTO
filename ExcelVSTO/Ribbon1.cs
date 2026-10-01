@@ -322,23 +322,72 @@ namespace ExcelVSTO
         /// </summary>
         private void BtnStripFormulas_Click(object sender, RibbonControlEventArgs e)
         {
-            PublishWorkbook(false);
+            PublishStripFormulas();
         }
 
         /// <summary>
-        /// 更新默认值：保留 IFERROR 公式结构，仅把兜底值替换为最新真值，生成副本。
+        /// 更新默认值：保留 IFERROR 公式结构，仅把兜底值替换为最新真值。
+        /// 直接在当前工作簿上位修改，不生成副本、不弹输入框与结果确认框（结果用状态栏提示）。
         /// </summary>
         private void BtnUpdateDefaults_Click(object sender, RibbonControlEventArgs e)
         {
-            PublishWorkbook(true);
+            const string marker = "电机额定功率";
+            var app = Globals.ThisAddIn.Application;
+            var wb = app.ActiveWorkbook;
+            if (wb == null)
+            {
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+
+            try
+            {
+                var result = Publishing.run(true, wb, marker);
+                if (result.FunctionMissing)
+                {
+                    app.StatusBar = $"本机无此函数「{marker}」，未更新任何单元格。";
+                }
+                else if (result.ProcessedCount == 0
+                         && result.ErrorCells.Length == 0
+                         && result.UnconformCells.Length == 0
+                         && result.ArrayFormulaCells.Length == 0
+                         && result.ProtectedSheets.Length == 0)
+                {
+                    app.StatusBar = $"未找到包含「{marker}」的公式。";
+                }
+                else
+                {
+                    var parts = new System.Collections.Generic.List<string> { $"已更新 {result.ProcessedCount} 个单元格" };
+                    if (result.ErrorCells.Length > 0)
+                    {
+                        parts.Add($"跳过错误值 {result.ErrorCells.Length} 个");
+                    }
+                    if (result.UnconformCells.Length > 0)
+                    {
+                        parts.Add($"跳过格式不符 {result.UnconformCells.Length} 个");
+                    }
+                    if (result.ArrayFormulaCells.Length > 0)
+                    {
+                        parts.Add($"跳过数组公式 {result.ArrayFormulaCells.Length} 个");
+                    }
+                    if (result.ProtectedSheets.Length > 0)
+                    {
+                        parts.Add($"跳过受保护工作表 {result.ProtectedSheets.Length} 个");
+                    }
+                    app.StatusBar = "更新默认值：" + string.Join("；", parts) + "。";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         /// <summary>
-        /// 发布辅助主流程：输入标记函数名 → 预检（只读）→ SaveCopyAs 生成副本 → 在副本上批量处理 →
+        /// 脱公式主流程：输入标记函数名 → 预检（只读）→ SaveCopyAs 生成副本 → 在副本上批量处理 →
         /// 宏工作簿另存为 xlsx → 统计提示。源工作簿全程不被修改。
         /// </summary>
-        /// <param name="updateDefaults">true = 更新默认值；false = 脱公式</param>
-        private void PublishWorkbook(bool updateDefaults)
+        private void PublishStripFormulas()
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -348,7 +397,7 @@ namespace ExcelVSTO
                 return;
             }
 
-            var action = updateDefaults ? "更新默认值" : "脱公式";
+            var action = "脱公式";
             var dlg = new InputWindow(action, "电机额定功率");
             if (dlg.ShowDialog() != true)
             {
@@ -395,7 +444,7 @@ namespace ExcelVSTO
                 var dir = string.IsNullOrEmpty(wb.Path)
                     ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
                     : wb.Path;
-                var baseName = (updateDefaults ? "发布版_审核_" : "发布版_固化_") + stamp;
+                var baseName = "发布版_固化_" + stamp;
                 finalPath = System.IO.Path.Combine(dir, baseName + ".xlsx");
                 var isXlsx = string.Equals(System.IO.Path.GetExtension(wb.Name), ".xlsx", StringComparison.OrdinalIgnoreCase);
 
@@ -416,9 +465,7 @@ namespace ExcelVSTO
                 var copy = app.Workbooks.Open(copyPath);
                 try
                 {
-                    var result = updateDefaults
-                        ? Publishing.run(true, copy, marker)
-                        : Publishing.run(false, copy, marker);
+                    var result = Publishing.run(false, copy, marker);
                     if (result.FunctionMissing)
                     {
                         // 副本上探测到本机无此函数：不保存副本，提示并终止
@@ -435,7 +482,7 @@ namespace ExcelVSTO
                         copy.SaveAs(finalPath, XlFileFormat.xlOpenXMLWorkbook);
                     }
 
-                    var text = Publishing.formatSummary(updateDefaults, finalPath, result);
+                    var text = Publishing.formatSummary(false, finalPath, result);
                     if (result.ErrorCells.Length == 0
                         && result.UnconformCells.Length == 0
                         && result.ArrayFormulaCells.Length == 0

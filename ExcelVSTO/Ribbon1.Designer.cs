@@ -288,7 +288,7 @@
             this.btnUpdateDefaults.Label = "更新默认值";
             this.btnUpdateDefaults.Name = "btnUpdateDefaults";
             this.btnUpdateDefaults.ScreenTip = "直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）";
-            this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：把 =IFERROR(标记函数(...), 兜底值) 的第二个参数替换为当前最新真值（标记函数默认 电机额定功率），公式结构保留，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
+            this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
             this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
             // 
             // Ribbon1

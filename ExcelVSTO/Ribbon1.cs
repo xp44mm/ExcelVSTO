@@ -326,8 +326,8 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 更新默认值：扫描当前工作簿全部工作表，仅处理公式为
-        /// =IFERROR(标记函数(...), 常量) 的单元格：将兜底常量替换为该单元格最新真值，并以绿色标记。
+        /// 更新默认值：扫描当前工作簿全部工作表，不限函数名，处理所有公式为
+        /// =IFERROR(函数(...), 常量) 的单元格：将兜底常量替换为该单元格最新真值，并以绿色标记。
         /// 直接在当前工作簿上位修改，不生成副本、不弹输入框与结果确认框（结果用状态栏提示）。
         /// 核心逻辑（扫描、过滤、改写、标色、统计）在 F# 的 Publishing.updateDefaults 中实现。
         /// </summary>
@@ -344,17 +344,13 @@ namespace ExcelVSTO
             try
             {
                 var result = Publishing.updateDefaults(wb);
-                if (result.FunctionMissing)
-                {
-                    app.StatusBar = $"本机无此函数「{Publishing.DefaultMarker}」，未更新任何单元格。";
-                }
-                else if (result.ProcessedCount == 0
+                if (result.ProcessedCount == 0
                          && result.ErrorCells.Length == 0
                          && result.UnconformCells.Length == 0
                          && result.ArrayFormulaCells.Length == 0
                          && result.ProtectedSheets.Length == 0)
                 {
-                    app.StatusBar = $"未找到包含「{Publishing.DefaultMarker}」的公式。";
+                    app.StatusBar = "未找到 IFERROR(函数(...), 常量) 结构的公式。";
                 }
                 else
                 {

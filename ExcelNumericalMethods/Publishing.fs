@@ -5,9 +5,9 @@ open System.Globalization
 open Microsoft.Office.Interop.Excel
 
 /// 发布辅助：「脱公式」与「更新默认值」批量处理。
-/// 处理对象统一为 =IFERROR(标记函数(参数...), 兜底值) 结构；
-/// 更新默认值额外要求兜底值为常量字面量，仅替换该常量并以绿色标记；
-/// 脱公式在副本上进行，更新默认值在当前工作簿上位修改。
+/// 处理对象统一为 =IFERROR(函数(参数...), 兜底值) 结构；
+/// 更新默认值不限函数名：处理所有该结构单元格，且兜底值须为常量字面量，仅替换该常量并以绿色标记；
+/// 脱公式按 marker 指定的函数名过滤并在副本上进行，更新默认值在当前工作簿上位修改。
 module Publishing =
 
     /// 批量处理结果
@@ -18,7 +18,7 @@ module Publishing =
           FunctionMissing: bool
           /// 当前为错误值而跳过的单元格（工作表!地址, 显示文本）
           ErrorCells: (string * string) array
-          /// 不符合 IFERROR(标记函数(...), 兜底) 结构、或更新默认值时兜底不是常量字面量而跳过的单元格（工作表!地址, 公式）
+          /// 不符合 IFERROR(函数(...), 常量/兜底) 处理条件而跳过的单元格（工作表!地址, 公式）
           UnconformCells: (string * string) array
           /// 多格数组公式而跳过的单元格（工作表!地址, 公式）；单格数组公式按普通单元格处理
           ArrayFormulaCells: (string * string) array
@@ -80,6 +80,24 @@ module Publishing =
     /// 单元格公式文本中是否出现以 marker 为函数名的调用
     let containsMarker (marker: string) (cell: Range) : bool =
         hasFunctionCall marker (string (cell.Formula))
+
+    /// 公式是否为 =IFERROR(...) 结构（不区分大小写）。
+    /// 更新默认值以此作预过滤：不限函数名，凡 IFERROR 公式都进入结构判定。
+    let isIfErrorFormula (cell: Range) : bool =
+        let formula = string (cell.Formula)
+        formula.TrimStart().StartsWith("=IFERROR(", StringComparison.OrdinalIgnoreCase)
+
+    /// IFERROR 第一参数是否为以函数调用开头的文本（函数名 + 左括号），
+    /// 如 buckling(C11)、IF(A1>0,1,0)；单元格引用、括号表达式、跨表引用等开头均非函数调用。
+    let isFunctionCallArg (arg1: string) : bool =
+        let t = arg1.TrimStart()
+        if t.Length = 0 || (not (Char.IsLetter t.[0]) && t.[0] <> '_') then false
+        else
+            let rec nameEnd i =
+                if i < t.Length && isFunctionNameChar t.[i] then nameEnd (i + 1)
+                else i
+            let n = nameEnd 0
+            n < t.Length && t.[n] = '('
 
     /// 数组公式区域是否仅一个单元格。
     /// 单格数组公式可安全处理（写入用 FormulaArray 保持数组属性），多格数组公式跳过避免破坏。
@@ -270,13 +288,18 @@ module Publishing =
             with _ -> System.Nullable(true)
 
     /// 批量处理工作簿：
-    /// updateDefaults = true 时更新默认值（保留 IFERROR 结构，仅当第二参数为常量时替换兜底值为最新真值，并以绿色标记）；
-    /// updateDefaults = false 时脱公式（目标单元格固化为当前计算结果）。
+    /// updateDefaults = true 时更新默认值：不限函数名，处理所有 =IFERROR(函数(...), 常量) 结构，
+    /// 保留第一参数，仅当第二参数为常量时替换兜底值为最新真值，并以绿色标记；
+    /// updateDefaults = false 时脱公式：按 marker 过滤目标函数，将目标单元格固化为当前计算结果。
     let run (updateDefaults: bool, wb: Workbook, marker: string) : RunResult =
         wb.Application.Calculate()
+        // 更新默认值不限函数名，无需探测函数存在性；脱公式按 marker 过滤，
         // 处理前检查 marker 所指函数是否存在，不存在则终止，避免误固化
-        let exists = checkFunctionExists (wb, marker)
-        if exists.HasValue && not exists.Value then
+        let blocked =
+            not updateDefaults
+            && (let exists = checkFunctionExists (wb, marker)
+                in exists.HasValue && not exists.Value)
+        if blocked then
             { emptyResult with FunctionMissing = true }
         else
         let mutable processed = 0
@@ -296,7 +319,11 @@ module Publishing =
                 protectedSheets.Add ws.Name
             else
                 for cell in getFormulaCells ws do
-                    if containsMarker marker cell then
+                    // 更新默认值不限函数名，凡 IFERROR 公式都进入结构判定；脱公式按 marker 过滤
+                    let isTarget =
+                        if updateDefaults then isIfErrorFormula cell
+                        else containsMarker marker cell
+                    if isTarget then
                         if unbox cell.HasArray && not (isSingleCellArray cell) then
                             // 多格数组公式跳过，避免破坏；单格数组公式按普通单元格处理
                             arrays.Add(address cell, string (cell.Formula))
@@ -317,7 +344,7 @@ module Publishing =
                                     let formula = string (cell.Formula)
                                     match splitIfError formula with
                                     | Some (arg1, arg2) when
-                                        hasFunctionCall marker arg1
+                                        isFunctionCallArg arg1
                                         && isConstantLiteral arg2 ->
                                         // 仅当第二参数为常量时处理：保留第一个参数，兜底值替换为最新真值；
                                         // 单格数组公式用 FormulaArray 写入以保持数组公式属性
@@ -344,17 +371,10 @@ module Publishing =
           ArrayFormulaCells = arrays.ToArray()
           ProtectedSheets = protectedSheets.ToArray() }
 
-    /// 更新默认值默认标记函数名（功能区「更新默认值」按钮使用，无需弹窗输入）
-    let [<Literal>] DefaultMarker = "电机额定功率"
-
-    /// 更新默认值：指定标记函数名。对当前工作簿在位修改，保留 IFERROR 结构，
-    /// 仅处理第二参数为常量字面量的单元格，将其替换为最新真值并以绿色标记。
-    let updateDefaultsWith (wb: Workbook, marker: string) : RunResult =
-        run (true, wb, marker)
-
-    /// 更新默认值：使用默认标记函数名 DefaultMarker
+    /// 更新默认值：对当前工作簿在位修改，处理所有 =IFERROR(函数(...), 常量) 结构的单元格，
+    /// 将兜底常量替换为最新真值并以绿色标记。不限函数名（内置、XLL、自定义函数均适用）。
     let updateDefaults (wb: Workbook) : RunResult =
-        updateDefaultsWith (wb, DefaultMarker)
+        run (true, wb, "")
 
     /// 生成处理结果提示文本
     let formatSummary (updateDefaults: bool, path: string, result: RunResult) : string =
@@ -369,8 +389,8 @@ module Publishing =
                 sb.AppendLine(sprintf "  %s（%s）" addr text) |> ignore
         if result.UnconformCells.Length > 0 then
             let structDesc =
-                if updateDefaults then "IFERROR(标记函数(...), 常量)"
-                else "IFERROR(标记函数(...), 兜底)"
+                if updateDefaults then "IFERROR(函数(...), 常量)"
+                else "IFERROR(函数(...), 兜底)"
             sb.AppendLine(sprintf "跳过不符合 %s 结构的单元格 %d 个：" structDesc result.UnconformCells.Length) |> ignore
             for (addr, formula) in result.UnconformCells do
                 sb.AppendLine(sprintf "  %s：%s" addr formula) |> ignore

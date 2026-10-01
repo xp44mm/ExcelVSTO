@@ -110,6 +110,24 @@ type PublishingTest(output : ITestOutputHelper) =
         Should.equal (Publishing.hasFunctionCall "SQRT" "=IFERROR(A1, SQRT(2))") true
 
     [<Fact>]
+    member this.``isFunctionCallArg 函数调用开头``() =
+        Should.equal (Publishing.isFunctionCallArg "buckling(C11)") true
+        Should.equal (Publishing.isFunctionCallArg "电机额定功率(D11)") true
+        Should.equal (Publishing.isFunctionCallArg "SQRT(A1)") true
+        Should.equal (Publishing.isFunctionCallArg "IF(A1>0,1,0)") true
+        Should.equal (Publishing.isFunctionCallArg "MAX(0,1)") true
+
+    [<Fact>]
+    member this.``isFunctionCallArg 非函数调用开头``() =
+        Should.equal (Publishing.isFunctionCallArg "A1") false
+        Should.equal (Publishing.isFunctionCallArg "$E$11") false
+        Should.equal (Publishing.isFunctionCallArg "Sheet1!A1") false
+        Should.equal (Publishing.isFunctionCallArg "(A1+B1)*2") false
+        Should.equal (Publishing.isFunctionCallArg "1+2") false
+        Should.equal (Publishing.isFunctionCallArg "\"文本\"") false
+        Should.equal (Publishing.isFunctionCallArg "") false
+
+    [<Fact>]
     member this.``formatLiteral 文本加双引号并转义内部双引号``() =
         Should.equal (Publishing.formatLiteral (box "22")) "\"22\""
         Should.equal (Publishing.formatLiteral (box "说\"好\"")) "\"说\"\"好\"\"\""

@@ -14,7 +14,7 @@ module Publishing =
     type RunResult =
         { /// 已处理的目标单元格数
           ProcessedCount: int
-          /// 本机无此标记函数（ERROR.TYPE 探测为 #NAME?），处理已终止
+          /// 本机无此函数（ERROR.TYPE 探测为 #NAME?），处理已终止
           FunctionMissing: bool
           /// 当前为错误值而跳过的单元格（工作表!地址, 显示文本）
           ErrorCells: (string * string) array
@@ -57,10 +57,29 @@ module Publishing =
             }
         with _ -> Seq.empty
 
-    /// 单元格公式文本中是否包含标记函数名（不区分大小写）
+    /// 字符是否属于 Excel 函数名字符（字母、数字、下划线、点）。
+    /// 用于判断 marker 是否以完整函数名出现，避免子串误匹配（如 marker="RT" 误中 SQRT）。
+    let isFunctionNameChar (c: char) : bool =
+        Char.IsLetterOrDigit c || c = '_' || c = '.'
+
+    /// 文本中是否出现以 marker 为函数名的调用（不区分大小写）。
+    /// marker 是符合 Excel 函数名称格式的通用文本：内置函数（SQRT、SUM…）、XLL 函数、
+    /// 自定义函数（电机额定功率…）均可，不绑定任何具体函数。
+    /// 仅当 marker 后紧跟左括号（函数调用形式）且其前一个字符不是函数名字符（完整函数名边界）时视为命中。
+    let hasFunctionCall (marker: string) (text: string) : bool =
+        if String.IsNullOrEmpty marker then false
+        else
+            let pat = marker + "("
+            let rec loop (start: int) =
+                let i = text.IndexOf(pat, start, StringComparison.OrdinalIgnoreCase)
+                if i < 0 then false
+                elif i = 0 || not (isFunctionNameChar text.[i - 1]) then true
+                else loop (i + 1)
+            loop 0
+
+    /// 单元格公式文本中是否出现以 marker 为函数名的调用
     let containsMarker (marker: string) (cell: Range) : bool =
-        let formula = string (cell.Formula)
-        formula.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0
+        hasFunctionCall marker (string (cell.Formula))
 
     /// 数组公式区域是否仅一个单元格。
     /// 单格数组公式可安全处理（写入用 FormulaArray 保持数组属性），多格数组公式跳过避免破坏。
@@ -224,7 +243,7 @@ module Publishing =
                     if isMergeTopLeft cell && isErrorCell cell then errorCount <- errorCount + 1
         count, (count > 0 && errorCount = count)
 
-    /// 探测标记函数是否可用：取第一个目标单元格的 IFERROR 第一参数，
+    /// 探测 marker 所指函数是否可用：取第一个目标单元格的 IFERROR 第一参数，
     /// 用 =ERROR.TYPE(第一参数) 求值，结果为 5（#NAME?）即函数名不存在。
     /// 返回 null 表示找不到可探测的目标（无法判断），true 表示函数可用，false 表示本机无此函数。
     /// （用 Nullable<bool> 以便 C# 调用方以 HasValue/Value 访问。）
@@ -236,7 +255,7 @@ module Publishing =
                 |> Seq.tryPick (fun cell ->
                     if containsMarker marker cell && isMergeTopLeft cell then
                         match splitIfError (string (cell.Formula)) with
-                        | Some (arg1, _) when arg1.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0 ->
+                        | Some (arg1, _) when hasFunctionCall marker arg1 ->
                             Some arg1
                         | _ -> None
                     else None))
@@ -255,7 +274,7 @@ module Publishing =
     /// updateDefaults = false 时脱公式（目标单元格固化为当前计算结果）。
     let run (updateDefaults: bool, wb: Workbook, marker: string) : RunResult =
         wb.Application.Calculate()
-        // 处理前检查标记函数是否存在，不存在则终止，避免误固化
+        // 处理前检查 marker 所指函数是否存在，不存在则终止，避免误固化
         let exists = checkFunctionExists (wb, marker)
         if exists.HasValue && not exists.Value then
             { emptyResult with FunctionMissing = true }
@@ -298,7 +317,7 @@ module Publishing =
                                     let formula = string (cell.Formula)
                                     match splitIfError formula with
                                     | Some (arg1, arg2) when
-                                        arg1.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0
+                                        hasFunctionCall marker arg1
                                         && isConstantLiteral arg2 ->
                                         // 仅当第二参数为常量时处理：保留第一个参数，兜底值替换为最新真值；
                                         // 单格数组公式用 FormulaArray 写入以保持数组公式属性

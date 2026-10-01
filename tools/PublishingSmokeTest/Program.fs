@@ -68,28 +68,31 @@ let main _ =
         (cellOf ws2 3 2).Formula <- "=A1*3"                      // B3 普通公式（非 IFERROR），忽略
         (cellOf ws2 4 2).Formula <- "=IFERROR(SQRT(A1),B1)"      // B4 兜底为引用 → 非常量，跳过
         (cellOf ws2 6 2).Formula <- "=IFERROR(buckling(C11),200)" // B6 自定义函数名（本机无此函数，值=兜底 200），不限函数名应被处理
+        (cellOf ws2 7 2).Formula <- "=IFERROR(SQRT(2),99)"       // B7 真值 1.4142135...，兜底按 .NET "0.##" 格式化为 1.41
         setv ws2 11 4 9.0                                        // D11 = 9
         (cellOf ws2 12 4).FormulaArray <- "=IFERROR(SQRT(D11),22)" // D12 单格数组公式，真值 3
         ws2.Range("E5:F6").FormulaArray <- "=SQRT(A1:A2)"        // E5:F6 非 IFERROR 多格数组公式，不进入处理
         let d12dbg = cellOf ws2 12 4
         printfn "  调试 D12.Pattern=%A int=%d xlNone=%d sampleColor=%A" d12dbg.Interior.Pattern (int (d12dbg.Interior.Pattern :?> XlPattern)) (int XlPattern.xlPatternNone) (Publishing.sampleColor wb2)
         let r1 = Publishing.updateDefaults wb2
-        printfn "  updateDefaults processed=%d（期望 3：B1、D12、B6）" r1.ProcessedCount
+        printfn "  updateDefaults processed=%d（期望 4：B1、D12、B6、B7）" r1.ProcessedCount
         printfn "  ArrayFormulaCells=%d（期望 0：E5:F6 非 IFERROR 不进入处理）" r1.ArrayFormulaCells.Length
         printfn "  ErrorCells=%d（期望 1：B2 #DIV/0!）" r1.ErrorCells.Length
         printfn "  UnconformCells=%d（期望 1：B4 兜底为引用）" r1.UnconformCells.Length
-        expect (r1.ProcessedCount = 3) "processed = 3"
+        expect (r1.ProcessedCount = 4) "processed = 4"
         expect (r1.ArrayFormulaCells.Length = 0) "非 IFERROR 多格数组公式 E5:F6 不进入处理"
         expect (r1.ErrorCells.Length = 1) "错误值 B2 跳过"
         expect (r1.UnconformCells.Length = 1) "非常量兜底 B4 跳过"
         let b1 = cellOf ws2 1 2
         let b4 = cellOf ws2 4 2
         let b6 = cellOf ws2 6 2
+        let b7 = cellOf ws2 7 2
         let d12b = cellOf ws2 12 4
         let b3 = cellOf ws2 3 2
         expect (string b1.Formula = "=IFERROR(SQRT(A1),2)") (sprintf "B1 兜底更新：%s" (string b1.Formula))
         expect (string b4.Formula = "=IFERROR(SQRT(A1),B1)") "B4 非常量兜底公式未改动"
         expect (string b6.Formula = "=IFERROR(buckling(C11),200)") (sprintf "B6（buckling）被处理，兜底保持最新值：%s" (string b6.Formula))
+        expect (string b7.Formula = "=IFERROR(SQRT(2),1.41)") (sprintf "B7 兜底按 0.## 格式化：%s" (string b7.Formula))
         expect (unbox<bool> d12b.HasArray) "D12 仍为数组公式"
         expect (string d12b.FormulaArray = "=IFERROR(SQRT(D11),3)") (sprintf "D12 兜底更新（FormulaArray 写入）：%s" (string d12b.FormulaArray))
         expect (string b3.Formula = "=A1*3") "B3 普通公式保留"
@@ -102,7 +105,7 @@ let main _ =
         (cellOf ws2 5 2).Formula <- "=IFERROR(SQRT(A1),9)"       // B5 新目标
         let r2 = Publishing.updateDefaults wb2
         let b5 = cellOf ws2 5 2
-        expect (r2.ProcessedCount = 4) (sprintf "第二次 processed=4（B1/B5/D12/B6）：%d" r2.ProcessedCount)
+        expect (r2.ProcessedCount = 5) (sprintf "第二次 processed=5（B1/B5/D12/B6/B7）：%d" r2.ProcessedCount)
         expect (b5.Interior.Color = green) (sprintf "B5 标固定绿：%A" b5.Interior.Color)
         expect (b1.Interior.Color = green) (sprintf "B1 也被重新标绿：%A" b1.Interior.Color)
         wb2.Close(false) |> ignore

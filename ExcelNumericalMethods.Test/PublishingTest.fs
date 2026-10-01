@@ -112,6 +112,7 @@ type PublishingTest(output : ITestOutputHelper) =
     [<Fact>]
     member this.``isFunctionCallArg 函数调用开头``() =
         Should.equal (Publishing.isFunctionCallArg "buckling(C11)") true
+        Should.equal (Publishing.isFunctionCallArg "@buckling(C11)") true
         Should.equal (Publishing.isFunctionCallArg "电机额定功率(D11)") true
         Should.equal (Publishing.isFunctionCallArg "SQRT(A1)") true
         Should.equal (Publishing.isFunctionCallArg "IF(A1>0,1,0)") true
@@ -133,10 +134,13 @@ type PublishingTest(output : ITestOutputHelper) =
         Should.equal (Publishing.formatLiteral (box "说\"好\"")) "\"说\"\"好\"\"\""
 
     [<Fact>]
-    member this.``formatLiteral 数字``() =
+    member this.``formatLiteral 数字用 0.## 格式``() =
         Should.equal (Publishing.formatLiteral (box 22.0)) "22"
         Should.equal (Publishing.formatLiteral (box 1.5)) "1.5"
-        Should.equal (Publishing.formatLiteral (box 123.456)) "123.456"
+        Should.equal (Publishing.formatLiteral (box 123.456)) "123.46"
+        Should.equal (Publishing.formatLiteral (box 0.169584876486935)) "0.17"
+        Should.equal (Publishing.formatLiteral (box 2.0)) "2"
+        Should.equal (Publishing.formatLiteral (box 0.0)) "0"
 
     [<Fact>]
     member this.``formatLiteral 整数类型``() =

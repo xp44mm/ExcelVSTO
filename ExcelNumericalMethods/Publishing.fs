@@ -89,8 +89,12 @@ module Publishing =
 
     /// IFERROR 第一参数是否为以函数调用开头的文本（函数名 + 左括号），
     /// 如 buckling(C11)、IF(A1>0,1,0)；单元格引用、括号表达式、跨表引用等开头均非函数调用。
+    /// 容忍 Excel 365 自动插入的隐式交集运算符 @ 前缀（如 =IFERROR(@函数(...), 常量)）。
     let isFunctionCallArg (arg1: string) : bool =
-        let t = arg1.TrimStart()
+        let t0 = arg1.TrimStart()
+        let t =
+            if t0.StartsWith("@", StringComparison.Ordinal) then t0.Substring(1).TrimStart()
+            else t0
         if t.Length = 0 || (not (Char.IsLetter t.[0]) && t.[0] <> '_') then false
         else
             let rec nameEnd i =
@@ -229,14 +233,16 @@ module Publishing =
             | _ -> false
 
     /// 将真值格式化为公式字面量：
-    /// 文本加双引号（内部双引号转义为两个双引号），数字按不变区域设置输出，布尔为 TRUE/FALSE。
+    /// 文本加双引号（内部双引号转义为两个双引号），布尔为 TRUE/FALSE。
+    /// 数字用 .NET 的 "0.##" 格式：最多两位小数、四舍五入、去掉尾随零与多余小数点
+    /// （如 0.169584876486935 -> 0.17、2.0 -> 2）。注意这是 .NET 数字格式，与 Excel 单元格数字格式行为不同。
     let formatLiteral (value: obj) : string =
         match value with
         | null -> "\"\""
         | :? string as s -> Quotation.quote s
         | :? bool as b -> if b then "TRUE" else "FALSE"
-        | :? float as f -> f.ToString("R", CultureInfo.InvariantCulture)
-        | :? decimal as d -> d.ToString(CultureInfo.InvariantCulture)
+        | :? float as f -> f.ToString("0.##", CultureInfo.InvariantCulture)
+        | :? decimal as d -> d.ToString("0.##", CultureInfo.InvariantCulture)
         | :? DateTime as dt ->
             // 使用 .Value 读取日期时出现；用 DATE 函数保证日期语义
             let datePart = sprintf "DATE(%d,%d,%d)" dt.Year dt.Month dt.Day

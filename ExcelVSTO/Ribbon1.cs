@@ -407,8 +407,9 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 脱公式主流程：输入标记函数名 → 预检（只读）→ SaveCopyAs 生成副本 → 在副本上批量处理 →
-        /// 宏工作簿另存为 xlsx → 统计提示。源工作簿全程不被修改。
+        /// 脱公式：不限函数名，把所有 =IFERROR(函数(...), 常量) 结构的单元格固化为当前计算结果，
+        /// 另存副本，副本名为「当前工作簿名（崔胜利）.xlsx」（与源工作簿同目录）。源工作簿全程不被修改。
+        /// 核心逻辑（扫描、过滤、固化、统计）在 F# 的 Publishing.stripFormulas 中实现。
         /// </summary>
         private void PublishStripFormulas()
         {
@@ -420,55 +421,18 @@ namespace ExcelVSTO
                 return;
             }
 
-            var action = "脱公式";
-            var dlg = new InputWindow(action, "电机额定功率");
-            if (dlg.ShowDialog() != true)
-            {
-                return; // 关闭窗口即取消
-            }
-            var marker = (dlg.Input ?? "").Trim();
-            if (marker.Length == 0)
-            {
-                MessageBox.Show("标记函数名不能为空，已终止。");
-                return;
-            }
-
             var oldAlerts = app.DisplayAlerts;
             string tempPath = null;
-            string finalPath = null;
-            var aborted = false;
             try
             {
                 app.DisplayAlerts = false;
 
-                // 预检（只读）：未找到目标公式、或所有目标单元格均为错误值（可能本机无此函数）时终止
-                var (targetCount, allError) = Publishing.precheck(wb, marker);
-                if (targetCount == 0)
-                {
-                    MessageBox.Show($"未找到包含「{marker}」的公式。");
-                    return;
-                }
-                if (allError)
-                {
-                    MessageBox.Show($"本机无此函数「{marker}」（或所有目标单元格均为错误值），处理已终止，请先排查。");
-                    return;
-                }
-
-                // 处理前检查标记函数是否存在（=ERROR.TYPE(第一参数) 求值探测，仅只读不写单元格）
-                var exists = Publishing.checkFunctionExists(wb, marker);
-                if (exists.HasValue && !exists.Value)
-                {
-                    MessageBox.Show($"本机无此函数「{marker}」，处理已终止。");
-                    return;
-                }
-
-                // 生成带时间戳的副本
-                var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                // 副本名：当前工作簿名（崔胜利）.xlsx；未保存的工作簿存到文档目录
                 var dir = string.IsNullOrEmpty(wb.Path)
                     ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
                     : wb.Path;
-                var baseName = "发布版_固化_" + stamp;
-                finalPath = System.IO.Path.Combine(dir, baseName + ".xlsx");
+                var baseName = System.IO.Path.GetFileNameWithoutExtension(wb.Name) + "（崔胜利）";
+                var finalPath = System.IO.Path.Combine(dir, baseName + ".xlsx");
                 var isXlsx = string.Equals(System.IO.Path.GetExtension(wb.Name), ".xlsx", StringComparison.OrdinalIgnoreCase);
 
                 string copyPath;
@@ -488,14 +452,7 @@ namespace ExcelVSTO
                 var copy = app.Workbooks.Open(copyPath);
                 try
                 {
-                    var result = Publishing.run(false, copy, marker);
-                    if (result.FunctionMissing)
-                    {
-                        // 副本上探测到本机无此函数：不保存副本，提示并终止
-                        aborted = true;
-                        MessageBox.Show($"本机无此函数「{marker}」，处理已终止。");
-                        return;
-                    }
+                    var result = Publishing.stripFormulas(copy);
                     if (isXlsx)
                     {
                         copy.Save();
@@ -515,7 +472,7 @@ namespace ExcelVSTO
                     }
                     else
                     {
-                        var detail = new TextWindow(action + "结果", text);
+                        var detail = new TextWindow("脱公式结果", text);
                         detail.ShowDialog();
                     }
                 }
@@ -530,11 +487,6 @@ namespace ExcelVSTO
             }
             finally
             {
-                if (aborted && System.IO.File.Exists(finalPath))
-                {
-                    // 中止时清理已生成的副本文件（宏工作簿的中间副本由 tempPath 处理）
-                    System.IO.File.Delete(finalPath);
-                }
                 if (tempPath != null && System.IO.File.Exists(tempPath))
                 {
                     System.IO.File.Delete(tempPath);

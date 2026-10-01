@@ -7,7 +7,7 @@ open ExcelNumericalMethods
 /// 1) 单格数组公式的写入方式探测（Value2 / Formula / ClearContents+Value2 / FormulaArray）
 /// 2) 更新默认值：不限函数名处理 IFERROR(函数(...), 常量)（内置 SQRT 与自定义 buckling 均处理）、单格数组公式更新、
 ///    错误值跳过、非常量兜底跳过、非 IFERROR 公式忽略、固定绿色标色
-/// 3) 脱公式：单格数组公式固化、普通目标固化、普通公式保留
+/// 3) 脱公式：不限函数名，固化所有 IFERROR(函数(...), 常量) 单元格；单格数组公式固化、普通公式保留
 /// 4) 真实工作簿副本：燃烧器功率计算39.xlsx
 /// 5) 包裹自定义函数：公式包裹为 IFERROR(函数(...), 当前真值)，非公式/错误值/已是 IFERROR 不处理
 
@@ -120,16 +120,19 @@ let main _ =
         (cellOf ws3 1 2).Formula <- "=IFERROR(SQRT(A1),22)"
         (cellOf ws3 2 2).Formula <- "=IFERROR(SQRT(-1),1/0)"
         (cellOf ws3 3 2).Formula <- "=A1*3"
+        (cellOf ws3 3 3).Formula <- "=IFERROR(SQRT(A1),B3)"   // C3 兜底为引用 → 非常量兜底跳过
         setv ws3 11 4 9.0
         (cellOf ws3 12 4).FormulaArray <- "=IFERROR(SQRT(D11),22)"
-        ws3.Range("E5:F6").FormulaArray <- "=SQRT(A1:A2)"
-        let r3 = Publishing.run(false, wb3, "SQRT")
-        printfn "  run(false) processed=%d（期望 2：B1、D12）" r3.ProcessedCount
-        printfn "  ArrayFormulaCells=%d（期望 4）" r3.ArrayFormulaCells.Length
+        ws3.Range("E5:F6").FormulaArray <- "=SQRT(A1:A2)"      // 非 IFERROR 数组公式 → 不进入处理
+        let r3 = Publishing.stripFormulas wb3
+        printfn "  stripFormulas processed=%d（期望 2：B1、D12）" r3.ProcessedCount
+        printfn "  ArrayFormulaCells=%d（期望 0：E5:F6 非 IFERROR 不进入处理）" r3.ArrayFormulaCells.Length
         printfn "  ErrorCells=%d（期望 1）" r3.ErrorCells.Length
+        printfn "  UnconformCells=%d（期望 1：C3 兜底为引用）" r3.UnconformCells.Length
         expect (r3.ProcessedCount = 2) "processed = 2"
-        expect (r3.ArrayFormulaCells.Length = 4) "多格数组公式跳过（4 格）"
+        expect (r3.ArrayFormulaCells.Length = 0) "非 IFERROR 多格数组公式不进入处理"
         expect (r3.ErrorCells.Length = 1) "错误值跳过"
+        expect (r3.UnconformCells.Length = 1) "非常量兜底（引用）跳过"
         let b1s = cellOf ws3 1 2
         let d12s = cellOf ws3 12 4
         expect (not (unbox<bool> b1s.HasFormula)) (sprintf "B1 已固化（无公式）：%A" b1s.Value2)

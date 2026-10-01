@@ -83,33 +83,6 @@ type PublishingTest(output : ITestOutputHelper) =
         Should.equal (Publishing.isConstantLiteral " \"文本\" ") true
 
     [<Fact>]
-    member this.``hasFunctionCall 任意函数名通用匹配``() =
-        Should.equal (Publishing.hasFunctionCall "SQRT" "=IFERROR(SQRT(A1),22)") true
-        Should.equal (Publishing.hasFunctionCall "电机额定功率" "=IFERROR(电机额定功率(D11),22)") true
-        Should.equal (Publishing.hasFunctionCall "SUM" "=IFERROR(SUM(A1:B1),0)") true
-
-    [<Fact>]
-    member this.``hasFunctionCall 子串不误匹配``() =
-        Should.equal (Publishing.hasFunctionCall "RT" "=IFERROR(SQRT(A1),22)") false
-        Should.equal (Publishing.hasFunctionCall "X" "=BOX(A1)") false
-        Should.equal (Publishing.hasFunctionCall "X" "=X(A1)") true
-
-    [<Fact>]
-    member this.``hasFunctionCall 大小写不敏感``() =
-        Should.equal (Publishing.hasFunctionCall "sqrt" "=IFERROR(SQRT(A1),22)") true
-        Should.equal (Publishing.hasFunctionCall "Sqrt" "=iferror(sqrt(A1),22)") true
-
-    [<Fact>]
-    member this.``hasFunctionCall 非函数调用与空 marker``() =
-        Should.equal (Publishing.hasFunctionCall "SQRT" "=A1*3") false
-        Should.equal (Publishing.hasFunctionCall "MyName" "=IFERROR(MyName, 22)") false
-        Should.equal (Publishing.hasFunctionCall "" "=IFERROR(SQRT(A1),22)") false
-
-    [<Fact>]
-    member this.``hasFunctionCall 嵌套位置也命中``() =
-        Should.equal (Publishing.hasFunctionCall "SQRT" "=IFERROR(A1, SQRT(2))") true
-
-    [<Fact>]
     member this.``isFunctionCallArg 函数调用开头``() =
         Should.equal (Publishing.isFunctionCallArg "buckling(C11)") true
         Should.equal (Publishing.isFunctionCallArg "@buckling(C11)") true

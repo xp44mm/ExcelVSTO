@@ -57,13 +57,13 @@
             this.group6 = this.Factory.CreateRibbonGroup();
             this.btn_referencesOfWorksheet = this.Factory.CreateRibbonButton();
             this.btn_dependentsOfWorksheet = this.Factory.CreateRibbonButton();
-            this.group8 = this.Factory.CreateRibbonGroup();
-            this.btnSaveToSqlite = this.Factory.CreateRibbonButton();
-            this.btnCreateFromSqlite = this.Factory.CreateRibbonButton();
             this.group7 = this.Factory.CreateRibbonGroup();
             this.btnStripFormulas = this.Factory.CreateRibbonButton();
             this.btnUpdateDefaults = this.Factory.CreateRibbonButton();
             this.btnWrapFunction = this.Factory.CreateRibbonButton();
+            this.group8 = this.Factory.CreateRibbonGroup();
+            this.btnSaveToSqlite = this.Factory.CreateRibbonButton();
+            this.btnCreateFromSqlite = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -71,8 +71,8 @@
             this.group5.SuspendLayout();
             this.group4.SuspendLayout();
             this.group6.SuspendLayout();
-            this.group8.SuspendLayout();
             this.group7.SuspendLayout();
+            this.group8.SuspendLayout();
             this.SuspendLayout();
             // 
             // tab1
@@ -196,7 +196,8 @@
             this.btnBisect.Label = "对分法归零";
             this.btnBisect.Name = "btnBisect";
             this.btnBisect.ScreenTip = "平均单元格输入 =(A1+A2)/2，按符号缩小区间";
-            this.btnBisect.SuperTip = "选中平均单元格，公式应为 =(A1+A2)/2（只引用当前工作表的 A1 地址）。A1、A2 是区间上下界且必须是字面量；其下一行单元格为目标函数值，小于零则把 A1 更新为平均值，大于零则把 A2 更新为平均值。";
+            this.btnBisect.SuperTip = "选中平均单元格，公式应为 =(A1+A2)/2（只引用当前工作表的 A1 地址）。A1、A2 是区间上下界且必须是字面量；其下一行单元格为目标函数值，小于零则把 " +
+    "A1 更新为平均值，大于零则把 A2 更新为平均值。";
             this.btnBisect.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnBisect_Click);
             // 
             // btnSuccessive
@@ -204,7 +205,8 @@
             this.btnSuccessive.Label = "代入法归零";
             this.btnSuccessive.Name = "btnSuccessive";
             this.btnSuccessive.ScreenTip = "误差单元格输入 =A2-A1，A1 追成 A2";
-            this.btnSuccessive.SuperTip = "选中误差单元格，公式应为 =A2-A1（只引用当前工作表的 A1 地址）。A2 是新值，A1 是旧值且必须是字面量；点击后 A1 的值被更新为 A2 的值，使差值趋近于零。";
+            this.btnSuccessive.SuperTip = "选中误差单元格，公式应为 =A2-A1（只引用当前工作表的 A1 地址）。A2 是新值，A1 是旧值且必须是字面量；点击后 A1 的值被更新为 A2 的值，使差值" +
+    "趋近于零。";
             this.btnSuccessive.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnSuccessive_Click);
             // 
             // group4
@@ -248,6 +250,41 @@
             this.btn_dependentsOfWorksheet.Tag = "工作表输出";
             this.btn_dependentsOfWorksheet.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_dependentsOfWorksheet_Click);
             // 
+            // group7
+            // 
+            this.group7.Items.Add(this.btnStripFormulas);
+            this.group7.Items.Add(this.btnUpdateDefaults);
+            this.group7.Items.Add(this.btnWrapFunction);
+            this.group7.Label = "发布辅助";
+            this.group7.Name = "group7";
+            // 
+            // btnStripFormulas
+            // 
+            this.btnStripFormulas.Label = "另存为脱公式";
+            this.btnStripFormulas.Name = "btnStripFormulas";
+            this.btnStripFormulas.ScreenTip = "把含标记函数的公式固化为计算结果，生成副本供普通接收者使用";
+            this.btnStripFormulas.SuperTip = "扫描全部工作表，将公式中含标记函数（如 电机额定功率）的单元格固化为当前计算结果（清除公式与函数名）；普通公式原样保留。源工作簿不被修改，另存为「发布版_固化_时" +
+    "间戳.xlsx」。";
+            this.btnStripFormulas.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnStripFormulas_Click);
+            // 
+            // btnUpdateDefaults
+            // 
+            this.btnUpdateDefaults.Label = "更新默认值";
+            this.btnUpdateDefaults.Name = "btnUpdateDefaults";
+            this.btnUpdateDefaults.ScreenTip = "直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）";
+            this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿" +
+    "色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
+            this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
+            // 
+            // btnWrapFunction
+            // 
+            this.btnWrapFunction.Label = "包裹自定义函数";
+            this.btnWrapFunction.Name = "btnWrapFunction";
+            this.btnWrapFunction.ScreenTip = "把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果";
+            this.btnWrapFunction.SuperTip = "选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET \"0.##\" 格式），" +
+    "包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。";
+            this.btnWrapFunction.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnWrapFunction_Click);
+            // 
             // group8
             // 
             this.group8.Items.Add(this.btnSaveToSqlite);
@@ -269,38 +306,6 @@
             this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建一个新工作簿";
             this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
             // 
-            // group7
-            // 
-            this.group7.Items.Add(this.btnStripFormulas);
-            this.group7.Items.Add(this.btnUpdateDefaults);
-            this.group7.Items.Add(this.btnWrapFunction);
-            this.group7.Label = "发布辅助";
-            this.group7.Name = "group7";
-            // 
-            // btnStripFormulas
-            // 
-            this.btnStripFormulas.Label = "脱公式";
-            this.btnStripFormulas.Name = "btnStripFormulas";
-            this.btnStripFormulas.ScreenTip = "把含标记函数的公式固化为计算结果，生成副本供普通接收者使用";
-            this.btnStripFormulas.SuperTip = "扫描全部工作表，将公式中含标记函数（如 电机额定功率）的单元格固化为当前计算结果（清除公式与函数名）；普通公式原样保留。源工作簿不被修改，另存为「发布版_固化_时间戳.xlsx」。";
-            this.btnStripFormulas.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnStripFormulas_Click);
-            // 
-            // btnUpdateDefaults
-            // 
-            this.btnUpdateDefaults.Label = "更新默认值";
-            this.btnUpdateDefaults.Name = "btnUpdateDefaults";
-            this.btnUpdateDefaults.ScreenTip = "直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）";
-            this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
-            this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
-            // 
-            // btnWrapFunction
-            // 
-            this.btnWrapFunction.Label = "包裹自定义函数";
-            this.btnWrapFunction.Name = "btnWrapFunction";
-            this.btnWrapFunction.ScreenTip = "把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果";
-            this.btnWrapFunction.SuperTip = "选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET \"0.##\" 格式），包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。";
-            this.btnWrapFunction.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnWrapFunction_Click);
-            // 
             // Ribbon1
             // 
             this.Name = "Ribbon1";
@@ -321,10 +326,10 @@
             this.group4.PerformLayout();
             this.group6.ResumeLayout(false);
             this.group6.PerformLayout();
-            this.group8.ResumeLayout(false);
-            this.group8.PerformLayout();
             this.group7.ResumeLayout(false);
             this.group7.PerformLayout();
+            this.group8.ResumeLayout(false);
+            this.group8.PerformLayout();
             this.ResumeLayout(false);
 
         }

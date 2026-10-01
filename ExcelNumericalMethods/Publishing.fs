@@ -33,6 +33,15 @@ module Publishing =
           ArrayFormulaCells = [||]
           ProtectedSheets = [||] }
 
+    /// 包裹单个单元格的结果
+    type WrapResult =
+        { /// 是否已包裹成功
+          Wrapped: bool
+          /// 单元格地址（工作表名!列字母行号）
+          Address: string
+          /// 状态栏提示文本（成功时含新公式，失败时含原因）
+          Message: string }
+
     /// 列号转列字母：1 -> A，27 -> AA，703 -> AAA
     let rec columnLetters (n: int) : string =
         let n' = n - 1
@@ -381,6 +390,40 @@ module Publishing =
     /// 将兜底常量替换为最新真值并以绿色标记。不限函数名（内置、XLL、自定义函数均适用）。
     let updateDefaults (wb: Workbook) : RunResult =
         run (true, wb, "")
+
+    /// 包裹自定义函数：把单个单元格公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。
+    /// 兜底值取单元格当前计算结果，按 .NET "0.##" 格式化为公式字面量；
+    /// 单格数组公式用 FormulaArray 写入以保持数组属性。
+    /// 单元格不是公式、已是 IFERROR 公式、多格数组公式或当前为错误值时返回 Wrapped=false 及原因。
+    let wrapFunction (cell: Range) : WrapResult =
+        let addr = cellAddress cell.Worksheet cell
+        if not (unbox cell.HasFormula) then
+            { Wrapped = false; Address = addr; Message = "当前单元格不是公式，未包裹。" }
+        elif isIfErrorFormula cell then
+            { Wrapped = false; Address = addr; Message = "当前单元格已是 IFERROR 公式，无需重复包裹。" }
+        elif unbox cell.HasArray && not (isSingleCellArray cell) then
+            { Wrapped = false; Address = addr; Message = "当前单元格属于多格数组公式，未包裹。" }
+        else
+            let value =
+                try
+                    match cell.Value2 with
+                    | :? int as n when n < 0 -> Choice2Of2 (errorText n)
+                    | v -> Choice1Of2 v
+                with _ -> Choice2Of2 "#ERR"
+            match value with
+            | Choice2Of2 text ->
+                { Wrapped = false
+                  Address = addr
+                  Message = sprintf "当前单元格为错误值（%s），无法取兜底值，未包裹。" text }
+            | Choice1Of2 v ->
+                let formula = string (cell.Formula)
+                let body = formula.TrimStart().TrimStart('=')
+                let newFormula = sprintf "=IFERROR(%s,%s)" body (formatLiteral v)
+                if unbox cell.HasArray then cell.FormulaArray <- newFormula
+                else cell.Formula <- newFormula
+                { Wrapped = true
+                  Address = addr
+                  Message = sprintf "已包裹 %s 为 %s" addr newFormula }
 
     /// 生成处理结果提示文本
     let formatSummary (updateDefaults: bool, path: string, result: RunResult) : string =

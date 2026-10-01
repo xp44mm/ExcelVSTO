@@ -9,6 +9,7 @@ open ExcelNumericalMethods
 ///    错误值跳过、非常量兜底跳过、非 IFERROR 公式忽略、固定绿色标色
 /// 3) 脱公式：单格数组公式固化、普通目标固化、普通公式保留
 /// 4) 真实工作簿副本：燃烧器功率计算39.xlsx
+/// 5) 包裹自定义函数：公式包裹为 IFERROR(函数(...), 当前真值)，非公式/错误值/已是 IFERROR 不处理
 
 let defaultYellow = 10284031.0   // 0x009CEBFF (FFEB9C 的 BGR)
 let green = 5296274.0            // RGB(146,208,80) 的 BGR 0x0050D092（Publishing.UpdateDefaultsColor）
@@ -157,6 +158,35 @@ let main _ =
             File.Delete(tmp)
         else
             printfn "  源文件不存在，跳过真实文件测试。"
+
+        // ================= Part 5：包裹自定义函数 =================
+        printfn "== Part 5 包裹自定义函数 =="
+        let wb5 = app.Workbooks.Add()
+        let ws5 = wb5.Worksheets.[1] :?> Worksheet
+        setv ws5 1 1 4.0                                   // A1 = 4
+        (cellOf ws5 2 1).Formula <- "=SQRT(A1)"            // A2 真值 2 → 应包裹为 =IFERROR(SQRT(A1),2)
+        (cellOf ws5 3 1).Formula <- "=buckling(B1)"        // A3 自定义函数（本机无此函数 → #NAME?）→ 错误值不包裹
+        setv ws5 4 1 5.0                                   // A4 常量，非公式 → 不包裹
+        (cellOf ws5 5 1).Formula <- "=IFERROR(SQRT(A1),9)" // A5 已是 IFERROR → 不重复包裹
+        (cellOf ws5 7 1).Formula <- "=SQRT(2)"             // A7 真值 1.4142135... → 兜底按 0.## 格式化为 1.41
+        let rw1 = Publishing.wrapFunction (cellOf ws5 2 1)
+        printfn "  wrap A2 Wrapped=%b %s" rw1.Wrapped rw1.Message
+        expect (rw1.Wrapped) "A2 包裹成功"
+        expect (string (cellOf ws5 2 1).Formula = "=IFERROR(SQRT(A1),2)") (sprintf "A2 公式：%s" (string (cellOf ws5 2 1).Formula))
+        let rw3 = Publishing.wrapFunction (cellOf ws5 3 1)
+        printfn "  wrap A3 Wrapped=%b %s" rw3.Wrapped rw3.Message
+        expect (not rw3.Wrapped) "A3 错误值不包裹"
+        let rw4 = Publishing.wrapFunction (cellOf ws5 4 1)
+        expect (not rw4.Wrapped) "A4 常量（非公式）不包裹"
+        let rw5 = Publishing.wrapFunction (cellOf ws5 5 1)
+        expect (not rw5.Wrapped) "A5 已是 IFERROR 不重复包裹"
+        let rw6 = Publishing.wrapFunction (cellOf ws5 6 1)
+        expect (not rw6.Wrapped) "A6 空单元格（非公式）不包裹"
+        let rw7 = Publishing.wrapFunction (cellOf ws5 7 1)
+        printfn "  wrap A7 Wrapped=%b %s" rw7.Wrapped rw7.Message
+        expect (rw7.Wrapped) "A7 包裹成功"
+        expect (string (cellOf ws5 7 1).Formula = "=IFERROR(SQRT(2),1.41)") (sprintf "A7 兜底按 0.## 格式化：%s" (string (cellOf ws5 7 1).Formula))
+        wb5.Close(false) |> ignore
     with e ->
         printfn "冒烟异常：%s" e.Message
         failed <- 1

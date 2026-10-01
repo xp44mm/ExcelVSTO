@@ -63,6 +63,7 @@
             this.group7 = this.Factory.CreateRibbonGroup();
             this.btnStripFormulas = this.Factory.CreateRibbonButton();
             this.btnUpdateDefaults = this.Factory.CreateRibbonButton();
+            this.btnWrapFunction = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -272,6 +273,7 @@
             // 
             this.group7.Items.Add(this.btnStripFormulas);
             this.group7.Items.Add(this.btnUpdateDefaults);
+            this.group7.Items.Add(this.btnWrapFunction);
             this.group7.Label = "发布辅助";
             this.group7.Name = "group7";
             // 
@@ -290,6 +292,14 @@
             this.btnUpdateDefaults.ScreenTip = "直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）";
             this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
             this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
+            // 
+            // btnWrapFunction
+            // 
+            this.btnWrapFunction.Label = "包裹自定义函数";
+            this.btnWrapFunction.Name = "btnWrapFunction";
+            this.btnWrapFunction.ScreenTip = "把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果";
+            this.btnWrapFunction.SuperTip = "选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET \"0.##\" 格式），包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。";
+            this.btnWrapFunction.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnWrapFunction_Click);
             // 
             // Ribbon1
             // 
@@ -350,6 +360,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group7;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnStripFormulas;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnUpdateDefaults;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnWrapFunction;
     }
 
     partial class ThisRibbonCollection

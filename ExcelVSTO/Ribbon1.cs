@@ -381,6 +381,32 @@ namespace ExcelVSTO
         }
 
         /// <summary>
+        /// 包裹自定义函数：把活动单元格的公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。
+        /// 兜底值取当前计算结果（.NET "0.##" 格式）；非公式、已是 IFERROR、错误值等不处理。
+        /// 结果在状态栏提示；核心逻辑在 F# 的 Publishing.wrapFunction 中实现。
+        /// </summary>
+        private void BtnWrapFunction_Click(object sender, RibbonControlEventArgs e)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var cell = app.ActiveCell as Microsoft.Office.Interop.Excel.Range;
+            if (cell == null)
+            {
+                MessageBox.Show("当前没有活动单元格！");
+                return;
+            }
+
+            try
+            {
+                var result = Publishing.wrapFunction(cell);
+                app.StatusBar = result.Message;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        /// <summary>
         /// 脱公式主流程：输入标记函数名 → 预检（只读）→ SaveCopyAs 生成副本 → 在副本上批量处理 →
         /// 宏工作簿另存为 xlsx → 统计提示。源工作簿全程不被修改。
         /// </summary>

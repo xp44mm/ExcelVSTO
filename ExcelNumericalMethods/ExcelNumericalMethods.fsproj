@@ -8,6 +8,7 @@
     <Compile Include="Apostrophe.fs" />
     <Compile Include="Quotation.fs" />
     <Compile Include="Traversal.fs" />
+    <Compile Include="Publishing.fs" />
     <Compile Include="Prune.fs" />
     <Compile Include="NumericalMethods.fs" />
     <Compile Include="RootsOfEquations.fs" />

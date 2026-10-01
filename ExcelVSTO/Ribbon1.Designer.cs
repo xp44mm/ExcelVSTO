@@ -60,6 +60,9 @@
             this.group8 = this.Factory.CreateRibbonGroup();
             this.btnSaveToSqlite = this.Factory.CreateRibbonButton();
             this.btnCreateFromSqlite = this.Factory.CreateRibbonButton();
+            this.group7 = this.Factory.CreateRibbonGroup();
+            this.btnStripFormulas = this.Factory.CreateRibbonButton();
+            this.btnUpdateDefaults = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -68,6 +71,7 @@
             this.group4.SuspendLayout();
             this.group6.SuspendLayout();
             this.group8.SuspendLayout();
+            this.group7.SuspendLayout();
             this.SuspendLayout();
             // 
             // tab1
@@ -79,6 +83,7 @@
             this.tab1.Groups.Add(this.group5);
             this.tab1.Groups.Add(this.group4);
             this.tab1.Groups.Add(this.group6);
+            this.tab1.Groups.Add(this.group7);
             this.tab1.Groups.Add(this.group8);
             this.tab1.Label = "TabAddIns";
             this.tab1.Name = "tab1";
@@ -263,6 +268,29 @@
             this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建一个新工作簿";
             this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
             // 
+            // group7
+            // 
+            this.group7.Items.Add(this.btnStripFormulas);
+            this.group7.Items.Add(this.btnUpdateDefaults);
+            this.group7.Label = "发布辅助";
+            this.group7.Name = "group7";
+            // 
+            // btnStripFormulas
+            // 
+            this.btnStripFormulas.Label = "脱公式";
+            this.btnStripFormulas.Name = "btnStripFormulas";
+            this.btnStripFormulas.ScreenTip = "把含标记函数的公式固化为计算结果，生成副本供普通接收者使用";
+            this.btnStripFormulas.SuperTip = "扫描全部工作表，将公式中含标记函数（如 电机额定功率）的单元格固化为当前计算结果（清除公式与函数名）；普通公式原样保留。源工作簿不被修改，另存为「发布版_固化_时间戳.xlsx」。";
+            this.btnStripFormulas.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnStripFormulas_Click);
+            // 
+            // btnUpdateDefaults
+            // 
+            this.btnUpdateDefaults.Label = "更新默认值";
+            this.btnUpdateDefaults.Name = "btnUpdateDefaults";
+            this.btnUpdateDefaults.ScreenTip = "保留 IFERROR 公式结构，把兜底值更新为最新计算结果，生成副本供合作伙伴审核";
+            this.btnUpdateDefaults.SuperTip = "扫描全部工作表，把 =IFERROR(标记函数(...), 兜底值) 的第二个参数替换为当前最新真值；公式结构保留，接收者无本机函数时也能看到最新结果。源工作簿不被修改，另存为「发布版_审核_时间戳.xlsx」。";
+            this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
+            // 
             // Ribbon1
             // 
             this.Name = "Ribbon1";
@@ -285,6 +313,8 @@
             this.group6.PerformLayout();
             this.group8.ResumeLayout(false);
             this.group8.PerformLayout();
+            this.group7.ResumeLayout(false);
+            this.group7.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -317,6 +347,9 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group8;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSaveToSqlite;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCreateFromSqlite;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group7;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnStripFormulas;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnUpdateDefaults;
     }
 
     partial class ThisRibbonCollection

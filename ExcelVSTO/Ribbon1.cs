@@ -316,5 +316,161 @@ namespace ExcelVSTO
                 }
             }
         }
+
+        /// <summary>
+        /// 脱公式：扫描全部工作表，将公式中含标记函数的单元格固化为当前计算结果，生成副本。
+        /// </summary>
+        private void BtnStripFormulas_Click(object sender, RibbonControlEventArgs e)
+        {
+            PublishWorkbook(false);
+        }
+
+        /// <summary>
+        /// 更新默认值：保留 IFERROR 公式结构，仅把兜底值替换为最新真值，生成副本。
+        /// </summary>
+        private void BtnUpdateDefaults_Click(object sender, RibbonControlEventArgs e)
+        {
+            PublishWorkbook(true);
+        }
+
+        /// <summary>
+        /// 发布辅助主流程：输入标记函数名 → 预检（只读）→ SaveCopyAs 生成副本 → 在副本上批量处理 →
+        /// 宏工作簿另存为 xlsx → 统计提示。源工作簿全程不被修改。
+        /// </summary>
+        /// <param name="updateDefaults">true = 更新默认值；false = 脱公式</param>
+        private void PublishWorkbook(bool updateDefaults)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var wb = app.ActiveWorkbook;
+            if (wb == null)
+            {
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+
+            var action = updateDefaults ? "更新默认值" : "脱公式";
+            var dlg = new InputWindow(action, "电机额定功率");
+            if (dlg.ShowDialog() != true)
+            {
+                return; // 关闭窗口即取消
+            }
+            var marker = (dlg.Input ?? "").Trim();
+            if (marker.Length == 0)
+            {
+                MessageBox.Show("标记函数名不能为空，已终止。");
+                return;
+            }
+
+            var oldAlerts = app.DisplayAlerts;
+            string tempPath = null;
+            string finalPath = null;
+            var aborted = false;
+            try
+            {
+                app.DisplayAlerts = false;
+
+                // 预检（只读）：未找到目标公式、或所有目标单元格均为错误值（可能本机无此函数）时终止
+                var (targetCount, allError) = Publishing.precheck(wb, marker);
+                if (targetCount == 0)
+                {
+                    MessageBox.Show($"未找到包含「{marker}」的公式。");
+                    return;
+                }
+                if (allError)
+                {
+                    MessageBox.Show($"本机无此函数「{marker}」（或所有目标单元格均为错误值），处理已终止，请先排查。");
+                    return;
+                }
+
+                // 处理前检查标记函数是否存在（=ERROR.TYPE(第一参数) 求值探测，仅只读不写单元格）
+                var exists = Publishing.checkFunctionExists(wb, marker);
+                if (exists.HasValue && !exists.Value)
+                {
+                    MessageBox.Show($"本机无此函数「{marker}」，处理已终止。");
+                    return;
+                }
+
+                // 生成带时间戳的副本
+                var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var dir = string.IsNullOrEmpty(wb.Path)
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+                    : wb.Path;
+                var baseName = (updateDefaults ? "发布版_审核_" : "发布版_固化_") + stamp;
+                finalPath = System.IO.Path.Combine(dir, baseName + ".xlsx");
+                var isXlsx = string.Equals(System.IO.Path.GetExtension(wb.Name), ".xlsx", StringComparison.OrdinalIgnoreCase);
+
+                string copyPath;
+                if (isXlsx)
+                {
+                    wb.SaveCopyAs(finalPath);
+                    copyPath = finalPath;
+                }
+                else
+                {
+                    // 宏工作簿先按原格式另存副本，处理后再另存为 xlsx（不含宏）
+                    tempPath = System.IO.Path.Combine(dir, baseName + System.IO.Path.GetExtension(wb.Name));
+                    wb.SaveCopyAs(tempPath);
+                    copyPath = tempPath;
+                }
+
+                var copy = app.Workbooks.Open(copyPath);
+                try
+                {
+                    var result = updateDefaults
+                        ? Publishing.run(true, copy, marker)
+                        : Publishing.run(false, copy, marker);
+                    if (result.FunctionMissing)
+                    {
+                        // 副本上探测到本机无此函数：不保存副本，提示并终止
+                        aborted = true;
+                        MessageBox.Show($"本机无此函数「{marker}」，处理已终止。");
+                        return;
+                    }
+                    if (isXlsx)
+                    {
+                        copy.Save();
+                    }
+                    else
+                    {
+                        copy.SaveAs(finalPath, XlFileFormat.xlOpenXMLWorkbook);
+                    }
+
+                    var text = Publishing.formatSummary(updateDefaults, finalPath, result);
+                    if (result.ErrorCells.Length == 0
+                        && result.UnconformCells.Length == 0
+                        && result.ArrayFormulaCells.Length == 0
+                        && result.ProtectedSheets.Length == 0)
+                    {
+                        MessageBox.Show(text);
+                    }
+                    else
+                    {
+                        var detail = new TextWindow(action + "结果", text);
+                        detail.ShowDialog();
+                    }
+                }
+                finally
+                {
+                    copy.Close(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                if (aborted && System.IO.File.Exists(finalPath))
+                {
+                    // 中止时清理已生成的副本文件（宏工作簿的中间副本由 tempPath 处理）
+                    System.IO.File.Delete(finalPath);
+                }
+                if (tempPath != null && System.IO.File.Exists(tempPath))
+                {
+                    System.IO.File.Delete(tempPath);
+                }
+                app.DisplayAlerts = oldAlerts;
+            }
+        }
     }
 }

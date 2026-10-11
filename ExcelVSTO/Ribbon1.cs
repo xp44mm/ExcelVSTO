@@ -84,9 +84,16 @@ namespace ExcelVSTO
                 return;
             }
 
+            var sheet = app.ActiveSheet as Worksheet;
+            if (sheet == null)
+            {
+                MessageBox.Show("当前没有活动工作表！");
+                return;
+            }
+
             try
             {
-                ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.FullName);
+                ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.FullName, sheet.Name);
                 app.StatusBar = "当前选择已经放入剪贴板";
             }
             catch (Exception ex)

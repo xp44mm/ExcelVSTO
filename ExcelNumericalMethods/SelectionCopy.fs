@@ -1,5 +1,5 @@
 ﻿///「复制选择」：把当前选择的单元格地址与公式字符串，以
-/// 工作簿【工作簿名】当前选择：["A1","=0";"A2","=A1"]
+/// 工作簿【工作簿全路径】工作表【工作表名】当前选择：["A1","=0";"A2","=A1"]
 /// 格式写入系统剪贴板。
 module ExcelNumericalMethods.SelectionCopy
 
@@ -31,9 +31,9 @@ let entriesOf (sel: Range) : (string * string) list =
                 entries.Add(entryOf cell)
     List.ofSeq entries
 
-/// 拼装剪贴板文本：工作簿【工作簿名】当前选择：[条目1;条目2;...]
-let format (workbookName: string) (entries: (string * string) list) : string =
-    sprintf "工作簿【%s】当前选择：%s" workbookName (stringify entries)
+/// 拼装剪贴板文本：工作簿【工作簿全路径】工作表【工作表名】当前选择：[条目1;条目2;...]
+let format (workbookPath: string) (sheetName: string) (entries: (string * string) list) : string =
+    sprintf "工作簿【%s】工作表【%s】当前选择：%s" workbookPath sheetName (stringify entries)
 
 /// 将文本写入系统剪贴板；剪贴板被其他程序占用时重试数次。
 let setClipboardText (text: string) : unit =
@@ -49,7 +49,7 @@ let setClipboardText (text: string) : unit =
     retry 5
 
 /// 把当前选择复制到剪贴板，返回生成的文本（供状态栏提示等使用）。
-let copySelection (sel: Range) (workbookName: string) : string =
-    let text = format workbookName (entriesOf sel)
+let copySelection (sel: Range) (workbookPath: string) (sheetName: string) : string =
+    let text = format workbookPath sheetName (entriesOf sel)
     setClipboardText text
     text

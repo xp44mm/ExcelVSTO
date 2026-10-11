@@ -39,6 +39,7 @@
             this.btnSelectInUsedRange = this.Factory.CreateRibbonButton();
             this.btnSelectArray = this.Factory.CreateRibbonButton();
             this.btnMergeCells = this.Factory.CreateRibbonButton();
+            this.btnCopySelection = this.Factory.CreateRibbonButton();
             this.group2 = this.Factory.CreateRibbonGroup();
             this.btnUnroll = this.Factory.CreateRibbonButton();
             this.btnRollup = this.Factory.CreateRibbonButton();
@@ -94,6 +95,7 @@
             this.group1.Items.Add(this.btnSelectInUsedRange);
             this.group1.Items.Add(this.btnSelectArray);
             this.group1.Items.Add(this.btnMergeCells);
+            this.group1.Items.Add(this.btnCopySelection);
             this.group1.Label = "选择工具";
             this.group1.Name = "group1";
             // 
@@ -117,6 +119,13 @@
             this.btnMergeCells.Name = "btnMergeCells";
             this.btnMergeCells.SuperTip = "合并单元格及其内容";
             this.btnMergeCells.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnMergeCells_Click);
+            // 
+            // btnCopySelection
+            // 
+            this.btnCopySelection.Label = "复制选择";
+            this.btnCopySelection.Name = "btnCopySelection";
+            this.btnCopySelection.ScreenTip = "把当前选择的单元格地址和公式字符串复制到剪贴板";
+            this.btnCopySelection.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnCopySelection_Click);
             // 
             // group2
             // 
@@ -341,6 +350,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSelectInUsedRange;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSelectArray;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnMergeCells;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCopySelection;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnUnroll;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnRollup;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnInsertBlank;

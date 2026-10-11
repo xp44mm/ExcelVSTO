@@ -63,6 +63,10 @@ namespace ExcelVSTO
             }
         }
 
+        /// <summary>
+        /// 复制选择：把当前选择的单元格地址与公式字符串复制到剪贴板。
+        /// 格式与核心逻辑在 F# 的 SelectionCopy.copySelection 中实现。
+        /// </summary>
         private void BtnCopySelection_Click(object sender, RibbonControlEventArgs e)
         {
             var app = Globals.ThisAddIn.Application;
@@ -82,51 +86,13 @@ namespace ExcelVSTO
 
             try
             {
-                var entries = new System.Collections.Generic.List<string>();
-                foreach (Range area in sel.Areas)
-                {
-                    foreach (Range cell in area)
-                    {
-                        var address = cell.get_Address(false, false);
-                        var formula = Convert.ToString(cell.Formula, System.Globalization.CultureInfo.InvariantCulture) ?? "";
-                        entries.Add($"\"{address}\",\"{formula.Replace("\"", "\"\"")}\"");
-                    }
-                }
-
-                if (entries.Count == 0)
-                {
-                    MessageBox.Show("当前选择中没有单元格！");
-                    return;
-                }
-
-                var text = $"工作簿【{wb.Name}】当前选择：[{string.Join(";", entries)}]";
-                SetClipboardText(text);
+                var text = ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.Name);
                 app.StatusBar = "已复制当前选择到剪贴板：" + text;
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
-        }
-
-        /// <summary>
-        /// 将文本写入系统剪贴板；剪贴板被其他程序占用时重试数次。
-        /// </summary>
-        private static void SetClipboardText(string text)
-        {
-            for (int i = 0; i < 5; i++)
-            {
-                try
-                {
-                    System.Windows.Forms.Clipboard.SetDataObject(text, true, 5, 100);
-                    return;
-                }
-                catch (System.Runtime.InteropServices.ExternalException)
-                {
-                    System.Threading.Thread.Sleep(100);
-                }
-            }
-            throw new System.Runtime.InteropServices.ExternalException("无法写入剪贴板，可能被其他程序占用，请重试。");
         }
 
         private void BtnUnroll_Click(object sender, RibbonControlEventArgs e)

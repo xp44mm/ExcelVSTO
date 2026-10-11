@@ -12,6 +12,7 @@
         <Compile Include="PruneTest.fs" />
         <Compile Include="WorkbookDbTest.fs" />
         <Compile Include="PublishingTest.fs" />
+        <Compile Include="SelectionCopyTest.fs" />
     </ItemGroup>
 
     <ItemGroup>

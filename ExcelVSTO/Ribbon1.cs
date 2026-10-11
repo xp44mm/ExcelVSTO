@@ -86,8 +86,8 @@ namespace ExcelVSTO
 
             try
             {
-                var text = ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.Name);
-                app.StatusBar = "已复制当前选择到剪贴板：" + text;
+                ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.FullName);
+                app.StatusBar = "当前选择已经放入剪贴板";
             }
             catch (Exception ex)
             {

@@ -17,6 +17,7 @@
     <Compile Include="WorksheetOps.fs" />
     <Compile Include="SqliteWorkbook.fs" />
     <Compile Include="SelectionCopy.fs" />
+    <Compile Include="TableBorder.fs" />
   </ItemGroup>
 
   <ItemGroup>

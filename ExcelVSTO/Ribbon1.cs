@@ -126,6 +126,31 @@ namespace ExcelVSTO
             ExcelNumericalMethods.NumericalMethods.removeBlank(sel).Select();
         }
 
+        /// <summary>
+        /// 竖框线：清除选择的全部框线后，为每个单元格添加左右竖框线，并添加最顶行上框线与最底行下框线。
+        /// 核心逻辑在 F# 的 TableBorder 中实现。
+        /// </summary>
+        private void BtnVerticalBorder_Click(object sender, RibbonControlEventArgs e)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var sel = app.Selection as Range;
+            if (sel == null)
+            {
+                MessageBox.Show("当前没有选择单元格区域！");
+                return;
+            }
+
+            try
+            {
+                ExcelNumericalMethods.TableBorder.apply(sel);
+                app.StatusBar = "已应用竖框线";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
         private void BtnAlternateRows_Click(object sender, RibbonControlEventArgs e)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;

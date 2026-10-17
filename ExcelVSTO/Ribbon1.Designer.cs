@@ -46,6 +46,7 @@
             this.btnAlternateRows = this.Factory.CreateRibbonButton();
             this.btnInsertBlank = this.Factory.CreateRibbonButton();
             this.btnRemoveBlank = this.Factory.CreateRibbonButton();
+            this.btnVerticalBorder = this.Factory.CreateRibbonButton();
             this.group3 = this.Factory.CreateRibbonGroup();
             this.btnIncrease = this.Factory.CreateRibbonButton();
             this.btnDecrease = this.Factory.CreateRibbonButton();
@@ -134,6 +135,7 @@
             this.group2.Items.Add(this.btnAlternateRows);
             this.group2.Items.Add(this.btnInsertBlank);
             this.group2.Items.Add(this.btnRemoveBlank);
+            this.group2.Items.Add(this.btnVerticalBorder);
             this.group2.Label = "表格工具";
             this.group2.Name = "group2";
             // 
@@ -173,6 +175,14 @@
             this.btnRemoveBlank.Name = "btnRemoveBlank";
             this.btnRemoveBlank.SuperTip = "删除空行";
             this.btnRemoveBlank.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnRemoveBlank_Click);
+            // 
+            // btnVerticalBorder
+            // 
+            this.btnVerticalBorder.Label = "竖框线";
+            this.btnVerticalBorder.Name = "btnVerticalBorder";
+            this.btnVerticalBorder.ScreenTip = "清除全部框线，为每个单元格添加左右竖框线，并加顶底框线";
+            this.btnVerticalBorder.SuperTip = "对当前选择区域：1 清除全部框线；2 为每个单元格添加左右竖框线；3 给最顶行添加上框线；4 给最底行添加下框线。线型为细实线。";
+            this.btnVerticalBorder.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnVerticalBorder_Click);
             // 
             // group3
             // 
@@ -355,6 +365,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnRollup;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnInsertBlank;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnRemoveBlank;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnVerticalBorder;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnAlternateRows;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnIncrease;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnDecrease;

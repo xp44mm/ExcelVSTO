@@ -40,3 +40,13 @@ module Formula2 =
 
     /// 管道写法：cell |> Formula2.setWith "=SUM(A1:A3)"
     let setWith (formula: string) (range: Range) : unit = set range formula
+
+    /// 读取区域公式：单格返回 string，多格返回 obj[,]（行优先，1 基索引随区域而定）。
+    /// 宿主不支持 Formula2 时退回 Range.Formula。
+    let getRaw (range: Range) : obj =
+        if obj.ReferenceEquals(range, null) then nullArg "range"
+        try
+            range.GetType().InvokeMember("Formula2", BindingFlags.GetProperty, null, range, null)
+        with
+        | :? MissingMethodException -> box range.Formula
+        | :? COMException as ex when ex.HResult = dispMemberNotFound -> box range.Formula

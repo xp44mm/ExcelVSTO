@@ -260,33 +260,83 @@ namespace ExcelVSTO
 
         }
 
+        /// <summary>
+        /// 工作表引用：把本工作表公式对外部地址（其他工作表 / 其他工作簿）的引用，
+        /// 集中写到 UsedRange 下方空一行处的中转区：每个外部区域写一条区域公式，
+        /// 由动态数组向右下溢出成原形状；原公式改为引用同形状的中转区域，
+        /// 使复杂公式内部不再嵌套外部地址。
+        /// 整行整列、3D 引用、超大区域不中转，在表尾逐行写提示；
+        /// 多格数组公式（Ctrl+Shift+Enter 数组或动态数组溢出）按数组单元整体收集与改写，
+        /// 不会因为「属数组」被跳过而漏掉其中的外部引用。
+        /// 本表完全没有可中转的外部地址时，也在表尾写一行说明。
+        /// 每次都从 UsedRange 下方重新追加，不识别、不复用上一次的中转区。
+        /// 核心逻辑在 F# 的 WorksheetRefs.relay 中实现。
+        /// </summary>
         private void btn_referencesOfWorksheet_Click(object sender, RibbonControlEventArgs e)
         {
-            //var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
+            var app = Globals.ThisAddIn.Application;
+            var ws = app.ActiveSheet as Worksheet;
 
-            //var cells =
-            //    Traversal.getCellsOfWorksheet(ws)
-            //    .Where(rg => (bool)rg.HasFormula)
-            //    .Select(rg => new Tuple<string, string>(rg.get_Address(), (string)rg.Formula))
-            //    .ToArray();
+            if (ws == null)
+            {
+                MessageBox.Show("当前没有活动工作表！");
+                return;
+            }
 
-            //var inputs =
-            //    WorksheetOps.references(ws.Name, cells)
-            //    .Select((tuple) => tuple.Item1 + tuple.Item2)
-            //    .ToArray();
+            var oldCalculation = app.Calculation;
+            try
+            {
+                app.Calculation = XlCalculation.xlCalculationManual;
 
-            //if (inputs.Length == 0)
-            //{
-            //    MessageBox.Show("当前工作表没有引用其他工作表！");
-            //}
-            //else
-            //{
-            //    var text = String.Join(Environment.NewLine, inputs);
-            //    var dlg = new TextWindow("工作表引用", text);
-            //    dlg.ShowDialog();
+                var result = ExcelNumericalMethods.WorksheetRefs.relay(ws);
 
-            //}
-
+                var parts = new System.Collections.Generic.List<string>();
+                if (result.NewRelayCount > 0)
+                {
+                    parts.Add($"建立中转区 A{result.RelayStartRow} 起 {result.RelayRows} 行 × {result.RelayCols} 列（{result.NewRelayCount} 个单元格，区域公式动态数组溢出）");
+                }
+                if (result.RewrittenCells > 0)
+                {
+                    parts.Add($"改写公式 {result.RewrittenCells} 个单元格");
+                }
+                if (result.HintCount > 0)
+                {
+                    parts.Add($"未中转 {result.SkippedRefs} 处，提示写在 A{result.HintStartRow} 起 {result.HintCount} 行");
+                }
+                if (result.NoRefNoticeRow > 0)
+                {
+                    parts.Add($"本表没有可中转的外部地址，已在 A{result.NoRefNoticeRow} 写明");
+                }
+                if (result.NewRelayCount == 0 && result.RewrittenCells == 0 && result.HintCount == 0
+                    && result.NoRefNoticeRow == 0)
+                {
+                    parts.Add("没有需要中转的外部地址");
+                }
+                if (result.HintCount > 0)
+                {
+                    var sample = string.Join("、", result.SkippedTexts.Take(3));
+                    var more = result.SkippedTexts.Length > 3 ? " 等" : "";
+                    parts.Add($"未中转：{sample}{more}");
+                }
+                if (result.ArrayUnits.Length > 0)
+                {
+                    parts.Add($"多格数组公式 {result.ArrayUnits.Length} 处按数组整体改写（{string.Join("、", result.ArrayUnits.Take(3))}{(result.ArrayUnits.Length > 3 ? " 等" : "")}）");
+                }
+                if (result.FailedCells.Length > 0)
+                {
+                    parts.Add($"写入失败 {result.FailedCells.Length} 处（{string.Join("、", result.FailedCells)}）");
+                }
+                app.StatusBar = "工作表引用：" + string.Join("；", parts) + "。";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                app.Calculation = oldCalculation;
+                app.Calculate();
+            }
         }
 
         private void btn_dependentsOfWorksheet_Click(object sender, RibbonControlEventArgs e)

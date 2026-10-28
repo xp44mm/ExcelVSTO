@@ -20,6 +20,7 @@
     <Compile Include="SelectionCopy.fs" />
     <Compile Include="TableBorder.fs" />
     <Compile Include="CrossSheetRefs.fs" />
+    <Compile Include="WorksheetRefs.fs" />
   </ItemGroup>
 
   <ItemGroup>

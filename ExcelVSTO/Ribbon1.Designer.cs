@@ -58,6 +58,7 @@
             this.clearName_button = this.Factory.CreateRibbonButton();
             this.group6 = this.Factory.CreateRibbonGroup();
             this.btn_referencesOfWorksheet = this.Factory.CreateRibbonButton();
+            this.btnDeleteRelayCell = this.Factory.CreateRibbonButton();
             this.btn_dependentsOfWorksheet = this.Factory.CreateRibbonButton();
             this.btnMarkCrossSheetRefs = this.Factory.CreateRibbonButton();
             this.group7 = this.Factory.CreateRibbonGroup();
@@ -251,6 +252,7 @@
             // group6
             // 
             this.group6.Items.Add(this.btn_referencesOfWorksheet);
+            this.group6.Items.Add(this.btnDeleteRelayCell);
             this.group6.Items.Add(this.btn_dependentsOfWorksheet);
             this.group6.Items.Add(this.btnMarkCrossSheetRefs);
             this.group6.Label = "工作表";
@@ -262,6 +264,16 @@
             this.btn_referencesOfWorksheet.Name = "btn_referencesOfWorksheet";
             this.btn_referencesOfWorksheet.Tag = "工作表输入";
             this.btn_referencesOfWorksheet.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_referencesOfWorksheet_Click);
+            // 
+            // btnDeleteRelayCell
+            // 
+            this.btnDeleteRelayCell.Label = "删除中转单元格";
+            this.btnDeleteRelayCell.Name = "btnDeleteRelayCell";
+            this.btnDeleteRelayCell.ScreenTip = "删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格";
+            this.btnDeleteRelayCell.SuperTip = "当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），" +
+    "内联到其他公式后不必加括号、也不改变语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。" +
+    "区域引用包含本单元格、多格数组、合并单元格、公式带顶层运算符（如 A1+B1）时不受理，且不做任何改动。";
+            this.btnDeleteRelayCell.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnDeleteRelayCell_Click);
             // 
             // btn_dependentsOfWorksheet
             // 
@@ -389,6 +401,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonButton clearName_button;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group6;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_referencesOfWorksheet;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnDeleteRelayCell;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_dependentsOfWorksheet;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnMarkCrossSheetRefs;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group8;

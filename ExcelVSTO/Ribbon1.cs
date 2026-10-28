@@ -339,6 +339,42 @@ namespace ExcelVSTO
             }
         }
 
+        /// <summary>
+        /// 删除中转单元格：当前单元格必须是一元表达式（内联到其他公式后不必加括号、不改变语义）。
+        /// 扫描当前工作簿全部公式，把引用本单元格的地址替换为本单元格的公式，然后清空本单元格。
+        /// 无法内联时（区域引用包含本单元格、公式带顶层运算符、多格数组、合并单元格等）
+        /// 弹出原因列表且不做任何改动。核心逻辑在 F# 的 RelayDelete.delete 中实现。
+        /// </summary>
+        private void BtnDeleteRelayCell_Click(object sender, RibbonControlEventArgs e)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var cell = app.ActiveCell as Range;
+            if (cell == null)
+            {
+                MessageBox.Show("当前没有活动单元格！");
+                return;
+            }
+
+            try
+            {
+                var result = ExcelNumericalMethods.RelayDelete.delete(cell);
+                if (result.Deleted)
+                {
+                    app.StatusBar = result.Message;
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "未删除 " + result.Address + "：" + Environment.NewLine
+                        + string.Join(Environment.NewLine, result.Blockers));
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
         private void btn_dependentsOfWorksheet_Click(object sender, RibbonControlEventArgs e)
         {
             //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;

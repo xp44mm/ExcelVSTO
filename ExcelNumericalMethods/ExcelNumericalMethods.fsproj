@@ -21,6 +21,7 @@
     <Compile Include="TableBorder.fs" />
     <Compile Include="CrossSheetRefs.fs" />
     <Compile Include="WorksheetRefs.fs" />
+    <Compile Include="RelayDelete.fs" />
   </ItemGroup>
 
   <ItemGroup>

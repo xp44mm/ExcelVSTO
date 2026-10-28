@@ -15,6 +15,7 @@
         <Compile Include="SelectionCopyTest.fs" />
         <Compile Include="CrossSheetRefsTest.fs" />
         <Compile Include="WorksheetRefsTest.fs" />
+        <Compile Include="RelayDeleteTest.fs" />
     </ItemGroup>
 
     <ItemGroup>

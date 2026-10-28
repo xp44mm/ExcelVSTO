@@ -223,9 +223,8 @@
             // 
             this.btnSuccessive.Label = "代入法归零";
             this.btnSuccessive.Name = "btnSuccessive";
-            this.btnSuccessive.ScreenTip = "误差单元格输入 =A2-A1，A1 追成 A2";
-            this.btnSuccessive.SuperTip = "选中误差单元格，公式应为 =A2-A1（只引用当前工作表的 A1 地址）。A2 是新值，A1 是旧值且必须是字面量；点击后 A1 的值被更新为 A2 的值，使差值" +
-    "趋近于零。";
+            this.btnSuccessive.ScreenTip = "所选单元格为 =A2-A1，一个为公式，另一个为字面量";
+            this.btnSuccessive.SuperTip = "点击按钮会修改字面量值为公式的当前值。如果出错会有消息框提示。";
             this.btnSuccessive.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnSuccessive_Click);
             // 
             // group4

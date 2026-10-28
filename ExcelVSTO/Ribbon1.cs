@@ -71,20 +71,21 @@ namespace ExcelVSTO
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
+            var sheet = app.ActiveSheet as Worksheet;
+            var sel = app.Selection as Range;
+
             if (wb == null)
             {
                 MessageBox.Show("当前没有打开的工作簿！");
                 return;
             }
 
-            var sel = app.Selection as Range;
             if (sel == null)
             {
                 MessageBox.Show("当前没有选择单元格区域！");
                 return;
             }
 
-            var sheet = app.ActiveSheet as Worksheet;
             if (sheet == null)
             {
                 MessageBox.Show("当前没有活动工作表！");

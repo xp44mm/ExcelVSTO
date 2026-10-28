@@ -141,7 +141,9 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
                 // 先设数字格式再写公式：格式为文本(@)时值按文本保存
                 try excelCell.NumberFormat <- cell.NumberFormat with _ -> ()
                 if not (String.IsNullOrEmpty cell.Formula) then
-                    excelCell.Formula <- cell.Formula)
+                    // 以 Formula2 写回：写入端统一按 US-English 函数名 + 动态数组语法解释，
+                    // 读出的公式（readCells 用 Range.Formula）即为同一英文形式，往返一致
+                    Formula2.set excelCell cell.Formula)
     // 删除多余的空白工作表
     let oldCount = sheets.Count
     if oldCount > data.Worksheets.Length then

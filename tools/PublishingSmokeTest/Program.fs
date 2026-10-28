@@ -4,7 +4,7 @@ open Microsoft.Office.Interop.Excel
 open ExcelNumericalMethods
 
 /// 模拟发布辅助功能的 Excel COM 冒烟测试：
-/// 1) 单格数组公式的写入方式探测（Value2 / Formula / ClearContents+Value2 / FormulaArray）
+/// 1) 单格数组公式的写入方式探测（Value2 / ClearContents+Value2 / FormulaArray / Formula2）
 /// 2) 更新默认值：不限函数名处理 IFERROR(函数(...), 常量)（内置 SQRT 与自定义 buckling 均处理）、单格数组公式更新、
 ///    错误值跳过、非常量兜底跳过、非 IFERROR 公式忽略、固定绿色标色
 /// 3) 脱公式：不限函数名，固化所有 IFERROR(函数(...), 常量) 单元格；单格数组公式固化、普通公式保留
@@ -50,12 +50,12 @@ let main _ =
             d12.ClearContents()
             printfn "  ClearContents 成功 HasArray=%b" (unbox<bool> d12.HasArray)
         with e -> printfn "  ClearContents 抛异常：%s" e.Message
-        // 重建数组公式再试 Formula 赋值
+        // 重建数组公式再试 Formula2 赋值
         d12.FormulaArray <- "=IFERROR(SQRT(D11),22)"
         try
-            d12.Formula <- "=IFERROR(SQRT(D11),3)"
-            printfn "  Formula 赋值成功 HasArray=%b" (unbox<bool> d12.HasArray)
-        with e -> printfn "  Formula 赋值抛异常：%s" e.Message
+            Formula2.set d12 "=IFERROR(SQRT(D11),3)"
+            printfn "  Formula2 赋值成功 HasArray=%b" (unbox<bool> d12.HasArray)
+        with e -> printfn "  Formula2 赋值抛异常：%s" e.Message
         wb1.Close(false) |> ignore
 
         // ================= Part 2：更新默认值（不限函数名 + 固定绿色标色） =================
@@ -64,12 +64,12 @@ let main _ =
         let ws2 = wb2.Worksheets.[1] :?> Worksheet
         ws2.Name <- "设备选型"
         setv ws2 1 1 4.0                      // A1 = 4
-        (cellOf ws2 1 2).Formula <- "=IFERROR(SQRT(A1),22)"      // B1 内置函数目标，真值 2
-        (cellOf ws2 2 2).Formula <- "=IFERROR(SQRT(-1),1/0)"     // B2 兜底为错误 → 单元格 #DIV/0!，跳过
-        (cellOf ws2 3 2).Formula <- "=A1*3"                      // B3 普通公式（非 IFERROR），忽略
-        (cellOf ws2 4 2).Formula <- "=IFERROR(SQRT(A1),B1)"      // B4 兜底为引用 → 非常量，跳过
-        (cellOf ws2 6 2).Formula <- "=IFERROR(buckling(C11),200)" // B6 自定义函数名（本机无此函数，值=兜底 200），不限函数名应被处理
-        (cellOf ws2 7 2).Formula <- "=IFERROR(SQRT(2),99)"       // B7 真值 1.4142135...，兜底按 .NET "0.##" 格式化为 1.41
+        (cellOf ws2 1 2) |> Formula2.setWith "=IFERROR(SQRT(A1),22)"      // B1 内置函数目标，真值 2
+        (cellOf ws2 2 2) |> Formula2.setWith "=IFERROR(SQRT(-1),1/0)"     // B2 兜底为错误 → 单元格 #DIV/0!，跳过
+        (cellOf ws2 3 2) |> Formula2.setWith "=A1*3"                      // B3 普通公式（非 IFERROR），忽略
+        (cellOf ws2 4 2) |> Formula2.setWith "=IFERROR(SQRT(A1),B1)"      // B4 兜底为引用 → 非常量，跳过
+        (cellOf ws2 6 2) |> Formula2.setWith "=IFERROR(buckling(C11),200)" // B6 自定义函数名（本机无此函数，值=兜底 200），不限函数名应被处理
+        (cellOf ws2 7 2) |> Formula2.setWith "=IFERROR(SQRT(2),99)"       // B7 真值 1.4142135...，兜底按 .NET "0.##" 格式化为 1.41
         setv ws2 11 4 9.0                                        // D11 = 9
         (cellOf ws2 12 4).FormulaArray <- "=IFERROR(SQRT(D11),22)" // D12 单格数组公式，真值 3
         ws2.Range("E5:F6").FormulaArray <- "=SQRT(A1:A2)"        // E5:F6 非 IFERROR 多格数组公式，不进入处理
@@ -103,7 +103,7 @@ let main _ =
         expect (b3.Interior.Color <> green) "B3 未被标色"
         // 固定绿色标记测试：标记色与 D12 的填充色无关（先把 D12 改成浅黄，再跑一次新目标 B5 仍标固定绿）
         d12b.Interior.Color <- defaultYellow
-        (cellOf ws2 5 2).Formula <- "=IFERROR(SQRT(A1),9)"       // B5 新目标
+        (cellOf ws2 5 2) |> Formula2.setWith "=IFERROR(SQRT(A1),9)"       // B5 新目标
         let r2 = Publishing.updateDefaults wb2
         let b5 = cellOf ws2 5 2
         expect (r2.ProcessedCount = 5) (sprintf "第二次 processed=5（B1/B5/D12/B6/B7）：%d" r2.ProcessedCount)
@@ -117,10 +117,10 @@ let main _ =
         let ws3 = wb3.Worksheets.[1] :?> Worksheet
         ws3.Name <- "设备选型"
         setv ws3 1 1 4.0
-        (cellOf ws3 1 2).Formula <- "=IFERROR(SQRT(A1),22)"
-        (cellOf ws3 2 2).Formula <- "=IFERROR(SQRT(-1),1/0)"
-        (cellOf ws3 3 2).Formula <- "=A1*3"
-        (cellOf ws3 3 3).Formula <- "=IFERROR(SQRT(A1),B3)"   // C3 兜底为引用 → 非常量兜底跳过
+        (cellOf ws3 1 2) |> Formula2.setWith "=IFERROR(SQRT(A1),22)"
+        (cellOf ws3 2 2) |> Formula2.setWith "=IFERROR(SQRT(-1),1/0)"
+        (cellOf ws3 3 2) |> Formula2.setWith "=A1*3"
+        (cellOf ws3 3 3) |> Formula2.setWith "=IFERROR(SQRT(A1),B3)"   // C3 兜底为引用 → 非常量兜底跳过
         setv ws3 11 4 9.0
         (cellOf ws3 12 4).FormulaArray <- "=IFERROR(SQRT(D11),22)"
         ws3.Range("E5:F6").FormulaArray <- "=SQRT(A1:A2)"      // 非 IFERROR 数组公式 → 不进入处理
@@ -167,11 +167,11 @@ let main _ =
         let wb5 = app.Workbooks.Add()
         let ws5 = wb5.Worksheets.[1] :?> Worksheet
         setv ws5 1 1 4.0                                   // A1 = 4
-        (cellOf ws5 2 1).Formula <- "=SQRT(A1)"            // A2 真值 2 → 应包裹为 =IFERROR(SQRT(A1),2)
-        (cellOf ws5 3 1).Formula <- "=buckling(B1)"        // A3 自定义函数（本机无此函数 → #NAME?）→ 错误值不包裹
+        (cellOf ws5 2 1) |> Formula2.setWith "=SQRT(A1)"            // A2 真值 2 → 应包裹为 =IFERROR(SQRT(A1),2)
+        (cellOf ws5 3 1) |> Formula2.setWith "=buckling(B1)"        // A3 自定义函数（本机无此函数 → #NAME?）→ 错误值不包裹
         setv ws5 4 1 5.0                                   // A4 常量，非公式 → 不包裹
-        (cellOf ws5 5 1).Formula <- "=IFERROR(SQRT(A1),9)" // A5 已是 IFERROR → 不重复包裹
-        (cellOf ws5 7 1).Formula <- "=SQRT(2)"             // A7 真值 1.4142135... → 兜底按 0.## 格式化为 1.41
+        (cellOf ws5 5 1) |> Formula2.setWith "=IFERROR(SQRT(A1),9)" // A5 已是 IFERROR → 不重复包裹
+        (cellOf ws5 7 1) |> Formula2.setWith "=SQRT(2)"             // A7 真值 1.4142135... → 兜底按 0.## 格式化为 1.41
         let rw1 = Publishing.wrapFunction (cellOf ws5 2 1)
         printfn "  wrap A2 Wrapped=%b %s" rw1.Wrapped rw1.Message
         expect (rw1.Wrapped) "A2 包裹成功"

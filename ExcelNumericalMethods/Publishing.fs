@@ -291,7 +291,7 @@ module Publishing =
                                         // 单格数组公式用 FormulaArray 写入以保持数组公式属性
                                         let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
                                         if unbox cell.HasArray then cell.FormulaArray <- newFormula
-                                        else cell.Formula <- newFormula
+                                        else Formula2.set cell newFormula
                                         // 以绿色标记已更新的目标单元格
                                         cell.Interior.Color <- float UpdateDefaultsColor
                                     else
@@ -349,7 +349,7 @@ module Publishing =
                 let body = formula.TrimStart().TrimStart('=')
                 let newFormula = sprintf "=IFERROR(%s,%s)" body (formatLiteral v)
                 if unbox cell.HasArray then cell.FormulaArray <- newFormula
-                else cell.Formula <- newFormula
+                else Formula2.set cell newFormula
                 { Wrapped = true
                   Address = addr
                   Message = sprintf "已包裹 %s 为 %s" addr newFormula }

@@ -18,6 +18,7 @@
     <Compile Include="SqliteWorkbook.fs" />
     <Compile Include="SelectionCopy.fs" />
     <Compile Include="TableBorder.fs" />
+    <Compile Include="CrossSheetRefs.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -324,6 +324,50 @@ namespace ExcelVSTO
 
         }
 
+        /// <summary>
+        /// 标记跨表引用：扫描当前工作簿全部公式，把被本工作表以外的单元格引用的单元格背景色涂成洋红。
+        /// 只处理工作簿内部的「工作表!地址」引用（含 3D 引用），外部工作簿引用与名称引用不处理。
+        /// 核心逻辑在 F# 的 CrossSheetRefs.mark 中实现。
+        /// </summary>
+        private void BtnMarkCrossSheetRefs_Click(object sender, RibbonControlEventArgs e)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var wb = app.ActiveWorkbook;
+            if (wb == null)
+            {
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+
+            try
+            {
+                var result = ExcelNumericalMethods.CrossSheetRefs.mark(wb);
+                var parts = new System.Collections.Generic.List<string>();
+                if (result.MarkedAreas == 0)
+                {
+                    parts.Add("没有被其他工作表引用的单元格");
+                }
+                else
+                {
+                    parts.Add($"已标记引用区域 {result.MarkedAreas} 个");
+                    parts.Add($"涉及工作表 {result.MarkedSheets.Length} 张（{string.Join("、", result.MarkedSheets)}）");
+                }
+                if (result.MissingSheets.Length > 0)
+                {
+                    parts.Add($"公式引用了不存在的工作表 {result.MissingSheets.Length} 个（{string.Join("、", result.MissingSheets)}）");
+                }
+                if (result.ProtectedSheets.Length > 0)
+                {
+                    parts.Add($"受保护无法标色的工作表 {result.ProtectedSheets.Length} 张（{string.Join("、", result.ProtectedSheets)}）");
+                }
+                app.StatusBar = "标记跨表引用：" + string.Join("；", parts) + "。";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
         private void btnSaveToSqlite_Click(object sender, RibbonControlEventArgs e)
         {
             var wb = Globals.ThisAddIn.Application.ActiveWorkbook;

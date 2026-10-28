@@ -13,6 +13,7 @@
         <Compile Include="WorkbookDbTest.fs" />
         <Compile Include="PublishingTest.fs" />
         <Compile Include="SelectionCopyTest.fs" />
+        <Compile Include="CrossSheetRefsTest.fs" />
     </ItemGroup>
 
     <ItemGroup>

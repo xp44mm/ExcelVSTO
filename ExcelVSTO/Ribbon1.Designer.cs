@@ -59,6 +59,7 @@
             this.group6 = this.Factory.CreateRibbonGroup();
             this.btn_referencesOfWorksheet = this.Factory.CreateRibbonButton();
             this.btn_dependentsOfWorksheet = this.Factory.CreateRibbonButton();
+            this.btnMarkCrossSheetRefs = this.Factory.CreateRibbonButton();
             this.group7 = this.Factory.CreateRibbonGroup();
             this.btnStripFormulas = this.Factory.CreateRibbonButton();
             this.btnUpdateDefaults = this.Factory.CreateRibbonButton();
@@ -251,6 +252,7 @@
             // 
             this.group6.Items.Add(this.btn_referencesOfWorksheet);
             this.group6.Items.Add(this.btn_dependentsOfWorksheet);
+            this.group6.Items.Add(this.btnMarkCrossSheetRefs);
             this.group6.Label = "工作表";
             this.group6.Name = "group6";
             // 
@@ -267,6 +269,15 @@
             this.btn_dependentsOfWorksheet.Name = "btn_dependentsOfWorksheet";
             this.btn_dependentsOfWorksheet.Tag = "工作表输出";
             this.btn_dependentsOfWorksheet.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_dependentsOfWorksheet_Click);
+            // 
+            // btnMarkCrossSheetRefs
+            // 
+            this.btnMarkCrossSheetRefs.Label = "标记跨表引用";
+            this.btnMarkCrossSheetRefs.Name = "btnMarkCrossSheetRefs";
+            this.btnMarkCrossSheetRefs.ScreenTip = "给被其他工作表公式引用的单元格涂上独特颜色（洋红）";
+            this.btnMarkCrossSheetRefs.SuperTip = "扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某" +
+    "个单元格，就把被引用的单元格背景色涂成洋红。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。";
+            this.btnMarkCrossSheetRefs.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnMarkCrossSheetRefs_Click);
             // 
             // group7
             // 
@@ -379,6 +390,7 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group6;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_referencesOfWorksheet;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btn_dependentsOfWorksheet;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnMarkCrossSheetRefs;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group8;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSaveToSqlite;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCreateFromSqlite;

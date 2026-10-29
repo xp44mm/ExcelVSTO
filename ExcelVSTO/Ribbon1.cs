@@ -486,24 +486,33 @@ namespace ExcelVSTO
             }
         }
 
+        /// <summary>
+        /// 从 SQLite 数据库导入：在当前工作簿尾部追加工作表，不新建工作簿、不保存文件。
+        /// 表名与现有表冲突时自动改名。
+        /// </summary>
         private void btnCreateFromSqlite_Click(object sender, RibbonControlEventArgs e)
         {
+            var app = Globals.ThisAddIn.Application;
+            var wb = app.ActiveWorkbook;
+            if (wb == null)
+            {
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Title = "从 SQLite 数据库创建工作簿",
+                Title = "从 SQLite 数据库导入工作表",
                 Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
-                CheckFileExists = true
+                CheckFileExists = true,
+                InitialDirectory = wb.Path
             };
             if (dlg.ShowDialog() == true)
             {
                 try
                 {
-                    var wb = ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom(Globals.ThisAddIn.Application, dlg.FileName);
-                    wb.Activate();
-                    // 保存为与数据库文件同路径、同名称、仅扩展名为 .xlsx 的文件
-                    var savePath = System.IO.Path.ChangeExtension(dlg.FileName, ".xlsx");
-                    wb.SaveAs(savePath);
-                    MessageBox.Show("已从数据库创建新工作簿并保存为：\n" + savePath);
+                    var names = ExcelNumericalMethods.SqliteWorkbook.appendSheetsFrom(wb, dlg.FileName);
+                    app.StatusBar = $"已在当前工作簿尾部追加 {names.Length} 张工作表：{string.Join("、", names)}";
                 }
                 catch (Exception ex)
                 {

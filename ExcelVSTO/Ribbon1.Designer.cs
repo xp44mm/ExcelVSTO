@@ -342,9 +342,9 @@
             // 
             // btnCreateFromSqlite
             // 
-            this.btnCreateFromSqlite.Label = "从SQLite创建工作簿";
+            this.btnCreateFromSqlite.Label = "从SQLite导入工作表";
             this.btnCreateFromSqlite.Name = "btnCreateFromSqlite";
-            this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建一个新工作簿";
+            this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件";
             this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
             // 
             // Ribbon1

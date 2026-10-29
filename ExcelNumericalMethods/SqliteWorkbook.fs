@@ -110,8 +110,10 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
           Worksheets = worksheets
           Cells = cells }
 
-/// 从 SQLite 数据库创建新的 Excel 工作簿（按三张表重建）
-let createWorkbookFrom (app: Application) (path: string) : Workbook =
+/// 从 SQLite 数据库导入：在当前工作簿尾部追加工作表（不新建工作簿、不保存文件）
+/// 工作表名与当前工作簿已有表名冲突时自动改名（原名后加 _2、_3 ...）
+/// 返回实际追加的工作表名（按数据库记录顺序）
+let appendSheetsFrom (wb: Workbook) (path: string) : string[] =
     // 先读取数据库内容
     let data = WorkbookDb.load path
 
@@ -120,19 +122,18 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
 
     let cellsBySheet = data.Cells |> Array.groupBy (fun c -> c.Worksheet) |> Map.ofArray
 
-    // 创建新的工作簿
-    let wb = app.Workbooks.Add(Type.Missing)
     let sheets = wb.Worksheets
-    let usedSheetNames = Collections.Generic.HashSet<string>()
+    let usedSheetNames =
+        Collections.Generic.HashSet<string>(
+            sheets |> Seq.cast<Worksheet> |> Seq.map (fun ws -> ws.Name))
     data.Worksheets
-    |> Array.iteri (fun i ws ->
+    |> Array.map (fun ws ->
+        // 追加到尾部：After 取当前最后一张表
         let sheet =
-            if i = 0 then
-                sheets.[1] :?> Worksheet
-            else
-                sheets.Add(Type.Missing, sheets.[sheets.Count], Type.Missing, Type.Missing)
-                :?> Worksheet
-        sheet.Name <- toExcelSheetName usedSheetNames ws.Name
+            sheets.Add(Type.Missing, sheets.[sheets.Count], Type.Missing, Type.Missing)
+            :?> Worksheet
+        let name = toExcelSheetName usedSheetNames ws.Name
+        sheet.Name <- name
         match Map.tryFind ws.Name cellsBySheet with
         | None -> ()
         | Some rows ->
@@ -143,15 +144,5 @@ let createWorkbookFrom (app: Application) (path: string) : Workbook =
                 if not (String.IsNullOrEmpty cell.Formula) then
                     // 以 Formula2 写回：写入端统一按 US-English 函数名 + 动态数组语法解释，
                     // 读出的公式（readCells 用 Range.Formula）即为同一英文形式，往返一致
-                    Formula2.set excelCell cell.Formula)
-    // 删除多余的空白工作表
-    let oldCount = sheets.Count
-    if oldCount > data.Worksheets.Length then
-        let opt = app.DisplayAlerts
-        app.DisplayAlerts <- false
-        try
-            for i in oldCount .. -1 .. (data.Worksheets.Length + 1) do
-                (sheets.[i] :?> Worksheet).Delete()
-        finally
-            app.DisplayAlerts <- opt
-    wb
+                    Formula2.set excelCell cell.Formula
+        name)

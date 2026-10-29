@@ -16,7 +16,7 @@ Excel 工作簿 SQLite 数据库访问包装库（netstandard2.0）。
 
 - `Cell.worksheet` 外键引用 `Worksheet.name`，打开连接时默认开启外键强制（`PRAGMA foreign_keys = ON`）。
 - `Workbook` 表恒有一行且名称非空：`save` 与 `createDatabase` 保证写入，`setWorkbookName` 拒绝空名称，读取到空表时 `getWorkbookName` 报错（旧版本建的库需先补写名称）。
-- 工作簿名称字段目前仅随 `save`/`load` 往返保留：从数据库重建 Excel 工作簿（`ExcelNumericalMethods.SqliteWorkbook.createWorkbookFrom`）是新建工作簿，暂未应用存储的名称。
+- 工作簿名称字段目前仅随 `save`/`load` 往返保留：从数据库导入工作表（`ExcelNumericalMethods.SqliteWorkbook.appendSheetsFrom`）只在当前工作簿尾部追加工作表，暂未应用存储的名称。
 - `formula` 不允许为 NULL（公式为空则该单元格不写入）。
 - `NumberFormat` 不允许为 NULL，默认 `'General'`（对应 Excel API `Range.NumberFormat`）。
 

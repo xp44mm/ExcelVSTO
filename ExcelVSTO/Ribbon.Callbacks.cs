@@ -9,13 +9,13 @@ using ExcelNumericalMethods;
 using ExcelWPF;
 
 using Microsoft.Office.Interop.Excel;
-using Microsoft.Office.Tools.Ribbon;
+using Office = Microsoft.Office.Core;
 using ComTypes = System.Runtime.InteropServices.ComTypes;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelVSTO
 {
-    public partial class Ribbon1
+    public partial class Ribbon
     {
         // 本实例在运行对象表（ROT）中的唯一名字，供外部进程精确绑定。
         private static string rotName;
@@ -26,15 +26,11 @@ namespace ExcelVSTO
         [DllImport("ole32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
         private static extern int CreateItemMoniker(string lpszDelim, string lpszObject, out ComTypes.IMoniker ppmk);
 
-        private void Ribbon1_Load(object sender, RibbonUIEventArgs e)
-        {
-        }
-
         /// <summary>
         /// 把当前 Excel 实例的 5 行关键信息复制到剪贴板：
         /// 采集时间 / PID / ROT 注册名 / 主窗口 HWND / EXCEL.EXE 路径。
         /// </summary>
-        private void BtnCopyInstanceInfo_Click(object sender, RibbonControlEventArgs e)
+        public void BtnCopyInstanceInfo_Click(Office.IRibbonControl control)
         {
             try
             {
@@ -66,7 +62,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void BtnSelectInUsedRange_Click(object sender, RibbonControlEventArgs e)
+        public void BtnSelectInUsedRange_Click(Office.IRibbonControl control)
         {
             var sel = Globals.ThisAddIn.Application.Selection as Range;
             var ws = sel.Worksheet;
@@ -84,7 +80,7 @@ namespace ExcelVSTO
                 MessageBox.Show(ex.Message);
             }
         }
-        private void BtnSelectArray_Click(object sender, RibbonControlEventArgs e)
+        public void BtnSelectArray_Click(Office.IRibbonControl control)
         {
             //选中一个单元格，如果这个单元格没有数组，选择不变，否则选择整个数组。
             var cell = Globals.ThisAddIn.Application.ActiveCell;
@@ -98,7 +94,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void BtnMergeCells_Click(object sender, RibbonControlEventArgs e)
+        public void BtnMergeCells_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var sel = app.Selection as Range;
@@ -118,7 +114,7 @@ namespace ExcelVSTO
         /// 复制选择：把当前选择的区域地址与当前值二维数组复制到剪贴板。
         /// 格式与核心逻辑在 F# 的 SelectionCopy.copySelection 中实现。
         /// </summary>
-        private void BtnCopySelection_Click(object sender, RibbonControlEventArgs e)
+        public void BtnCopySelection_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -154,25 +150,25 @@ namespace ExcelVSTO
             }
         }
 
-        private void BtnUnroll_Click(object sender, RibbonControlEventArgs e)
+        public void BtnUnroll_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.fillColumns(sel);
         }
 
-        private void BtnRollup_Click(object sender, RibbonControlEventArgs e)
+        public void BtnRollup_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.tidyColumns(sel);
         }
 
-        private void BtnInsertBlank_Click(object sender, RibbonControlEventArgs e)
+        public void BtnInsertBlank_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.split(sel).Select();
         }
 
-        private void BtnRemoveBlank_Click(object sender, RibbonControlEventArgs e)
+        public void BtnRemoveBlank_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.removeBlank(sel).Select();
@@ -182,7 +178,7 @@ namespace ExcelVSTO
         /// 竖框线：清除选择的全部框线后，为每个单元格添加左右竖框线，并添加最顶行上框线与最底行下框线。
         /// 核心逻辑在 F# 的 TableBorder 中实现。
         /// </summary>
-        private void BtnVerticalBorder_Click(object sender, RibbonControlEventArgs e)
+        public void BtnVerticalBorder_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var sel = app.Selection as Range;
@@ -203,25 +199,25 @@ namespace ExcelVSTO
             }
         }
 
-        private void BtnAlternateRows_Click(object sender, RibbonControlEventArgs e)
+        public void BtnAlternateRows_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.alternateColor(sel);
         }
 
-        private void BtnIncrease_Click(object sender, RibbonControlEventArgs e)
+        public void BtnIncrease_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             ExcelNumericalMethods.NumericalMethods.plusCell(1, sel);
         }
 
-        private void BtnDecrease_Click(object sender, RibbonControlEventArgs e)
+        public void BtnDecrease_Click(Office.IRibbonControl control)
         {
             var sel = (Range)Globals.ThisAddIn.Application.Selection;
             NumericalMethods.plusCell(-1, sel);
         }
 
-        private void BtnSuccessive_Click(object sender, RibbonControlEventArgs e)
+        public void BtnSuccessive_Click(Office.IRibbonControl control)
         {
             var goalCell = Globals.ThisAddIn.Application.ActiveCell;
             try
@@ -234,7 +230,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void BtnBisect_Click(object sender, RibbonControlEventArgs e)
+        public void BtnBisect_Click(Office.IRibbonControl control)
         {
             var goalCell = Globals.ThisAddIn.Application.ActiveCell;
             try
@@ -247,7 +243,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void deprecatedFormulae_Click(Object sender, RibbonControlEventArgs e)
+        public void deprecatedFormulae_Click(Office.IRibbonControl control)
         {
             //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
             //var result =
@@ -269,7 +265,7 @@ namespace ExcelVSTO
 
         }
 
-        private void clearName_button_Click(object sender, RibbonControlEventArgs e)
+        public void clearName_button_Click(Office.IRibbonControl control)
         {
             //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
 
@@ -323,7 +319,7 @@ namespace ExcelVSTO
         /// 每次都从 UsedRange 下方重新追加，不识别、不复用上一次的中转区。
         /// 核心逻辑在 F# 的 WorksheetRefs.relay 中实现。
         /// </summary>
-        private void btn_referencesOfWorksheet_Click(object sender, RibbonControlEventArgs e)
+        public void btn_referencesOfWorksheet_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var ws = app.ActiveSheet as Worksheet;
@@ -396,7 +392,7 @@ namespace ExcelVSTO
         /// 无法内联时（区域引用包含本单元格、公式带顶层运算符、多格数组、合并单元格等）
         /// 弹出原因列表且不做任何改动。核心逻辑在 F# 的 RelayDelete.delete 中实现。
         /// </summary>
-        private void BtnDeleteRelayCell_Click(object sender, RibbonControlEventArgs e)
+        public void BtnDeleteRelayCell_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var cell = app.ActiveCell as Range;
@@ -426,7 +422,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void btn_dependentsOfWorksheet_Click(object sender, RibbonControlEventArgs e)
+        public void btn_dependentsOfWorksheet_Click(Office.IRibbonControl control)
         {
             //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
             //var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
@@ -466,7 +462,7 @@ namespace ExcelVSTO
         /// 只处理工作簿内部的「工作表!地址」引用（含 3D 引用），外部工作簿引用与名称引用不处理。
         /// 核心逻辑在 F# 的 CrossSheetRefs.mark 中实现。
         /// </summary>
-        private void BtnMarkCrossSheetRefs_Click(object sender, RibbonControlEventArgs e)
+        public void BtnMarkCrossSheetRefs_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -505,7 +501,7 @@ namespace ExcelVSTO
             }
         }
 
-        private void btnSaveToSqlite_Click(object sender, RibbonControlEventArgs e)
+        public void btnSaveToSqlite_Click(Office.IRibbonControl control)
         {
             var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
             if (wb == null)
@@ -541,7 +537,7 @@ namespace ExcelVSTO
         /// 从 SQLite 数据库导入：在当前工作簿尾部追加工作表，不新建工作簿、不保存文件。
         /// 表名与现有表冲突时自动改名。
         /// </summary>
-        private void btnCreateFromSqlite_Click(object sender, RibbonControlEventArgs e)
+        public void btnCreateFromSqlite_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -578,7 +574,7 @@ namespace ExcelVSTO
         /// 直接在当前工作簿上位修改，不生成副本、不弹输入框与结果确认框（结果用状态栏提示）。
         /// 核心逻辑（扫描、过滤、改写、标色、统计）在 F# 的 Publishing.updateDefaults 中实现。
         /// </summary>
-        private void BtnUpdateDefaults_Click(object sender, RibbonControlEventArgs e)
+        public void BtnUpdateDefaults_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -635,7 +631,7 @@ namespace ExcelVSTO
         /// 已是 IFERROR、内置函数公式、错误值、受保护工作表不处理。
         /// 结果在状态栏提示，有跳过项时弹窗列出；核心逻辑在 F# 的 Publishing.wrapWorkbook 中实现。
         /// </summary>
-        private void BtnWrapFunction_Click(object sender, RibbonControlEventArgs e)
+        public void BtnWrapFunction_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -690,7 +686,7 @@ namespace ExcelVSTO
         /// 只在左上角单元格写入同一公式，由 Excel 自动溢出。
         /// 核心逻辑在 F# 的 ArrayFormula.convertCseToSpill 中实现。
         /// </summary>
-        private void BtnCseToSpill_Click(object sender, RibbonControlEventArgs e)
+        public void BtnCseToSpill_Click(Office.IRibbonControl control)
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;

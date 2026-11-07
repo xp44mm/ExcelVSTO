@@ -7,7 +7,7 @@
                     <button id="btnSelectInUsedRange" onAction="BtnSelectInUsedRange_Click" screentip="将整行整列的选择限定在已使用的范围内" label="缩小选择" showImage="false" />
                     <button id="btnSelectArray" onAction="BtnSelectArray_Click" screentip="扩展当前单元格为数组公式的范围" label="选择数组" showImage="false" />
                     <button id="btnMergeCells" onAction="BtnMergeCells_Click" supertip="合并单元格及其内容" label="合并单元格" showImage="false" />
-                    <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把当前选择的单元格地址和公式字符串复制到剪贴板" label="复制选择" showImage="false" />
+                    <button id="btnDeleteRelayCell" onAction="BtnDeleteRelayCell_Click" screentip="删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格" supertip="当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），内联到其他公式后不必加括号、也不改变语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。区域引用包含本单元格、多格数组、合并单元格、公式带顶层运算符（如 A1+B1）时不受理，且不做任何改动。" label="删除中转单元格" showImage="false" />
                 </group>
                 <group id="group2" label="表格工具">
                     <button id="btnUnroll" onAction="BtnUnroll_Click" screentip="unroll" supertip="填充下方的空单元格" label="展开列" showImage="false" />
@@ -31,17 +31,21 @@
                 </group>
                 <group id="group6" label="工作表">
                     <button id="btn_referencesOfWorksheet" onAction="btn_referencesOfWorksheet_Click" label="工作表引用" showImage="false" tag="工作表输入" />
-                    <button id="btnDeleteRelayCell" onAction="BtnDeleteRelayCell_Click" screentip="删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格" supertip="当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），内联到其他公式后不必加括号、也不改变语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。区域引用包含本单元格、多格数组、合并单元格、公式带顶层运算符（如 A1+B1）时不受理，且不做任何改动。" label="删除中转单元格" showImage="false" />
                     <button id="btn_dependentsOfWorksheet" onAction="btn_dependentsOfWorksheet_Click" label="工作表依赖" showImage="false" tag="工作表输出" />
                     <button id="btnMarkCrossSheetRefs" onAction="BtnMarkCrossSheetRefs_Click" screentip="给被其他工作表公式引用的单元格涂上独特颜色（洋红）" supertip="扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某个单元格，就把被引用的单元格背景色涂成洋红。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。" label="标记跨表引用" showImage="false" />
                 </group>
-                <group id="group7" label="发布辅助">
-                    <button id="btnUpdateDefaults" onAction="BtnUpdateDefaults_Click" screentip="直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）" supertip="直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。" label="更新默认值" showImage="false" />
-                    <button id="btnWrapFunction" onAction="BtnWrapFunction_Click" screentip="把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果" supertip="选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET &quot;0.##&quot; 格式），包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。" label="包裹自定义函数" showImage="false" />
+                <group id="group7" label="DNA6">
+                    <button id="btnUpdateDefaults" onAction="BtnUpdateDefaults_Click" screentip="直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）" supertip="直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。新旧两种数组公式都处理：多格区域（旧式 CSE 区域、新式溢出区）整块读取、兜底值换成同形数组常数（如 {1,2;3,4}），单格用标量；区域内非主单元格跳过。不生成副本，结果在状态栏提示。" label="更新默认值" showImage="false" />
+                    <button id="btnWrapFunction" onAction="BtnWrapFunction_Click" screentip="把当前工作簿中所有含 dna6 自定义函数的公式包裹为 IFERROR" supertip="扫描当前工作簿全部工作表，把所有含 dna6 自定义函数（_xll. 前缀或非内置函数名）的公式 =函数(...) 包裹为 =IFERROR(函数(...), 兜底值)。兜底值即当前计算结果（.NET &quot;0.##&quot; 格式）；多格数组公式（旧式 CSE 区域、新式溢出区）取整个区域的值，兜底值用同形数组常数（如 {1,2;3,4}）。内置函数公式、已是 IFERROR、错误值、受保护工作表不处理；有跳过项时弹窗列出明细，否则在状态栏提示。" label="包裹全部自定义函数" showImage="false" />
+                    <button id="btnCseToSpill" onAction="BtnCseToSpill_Click" screentip="把当前工作簿中旧式 CSE 数组公式一键转换为新式溢出（spill）公式" supertip="扫描当前工作簿全部工作表，把 Ctrl+Shift+Enter 录入的旧式 CSE 数组公式整块清除后，只在左上角单元格写入同一公式，由 Excel 自动溢出。转换后锚点若为错误值（多半是溢出被相邻数据阻挡变成 #SPILL!），自动回滚为原来的旧式数组公式并计入失败。工作簿受保护时先尝试无密码解除保护，处理完再按原样保护回去；结果在状态栏提示，有失败项时弹窗列出。" label="转溢出公式" showImage="false" />
                 </group>
                 <group id="group8" label="SQLite">
                     <button id="btnSaveToSqlite" onAction="btnSaveToSqlite_Click" screentip="把当前工作簿保存为SQLite数据库（工作簿/工作表/单元格三张表），直接覆盖目标文件" label="工作簿另存为SQLite" showImage="false" />
                     <button id="btnCreateFromSqlite" onAction="btnCreateFromSqlite_Click" screentip="从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件" label="从SQLite导入工作表" showImage="false" />
+                </group>
+                <group id="group9" label="实例">
+                    <button id="btnCopyInstanceInfo" onAction="BtnCopyInstanceInfo_Click" screentip="复制当前 Excel 实例的关键信息" supertip="把采集时间、PID、ROT 注册名、主窗口 HWND 与 EXCEL.EXE 路径共 5 行复制到剪贴板，供大模型定位并访问这个 Excel 实例。" label="复制实例信息" showImage="false" />
+                    <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把选择的单元格地址和它的当前值复制到剪贴板" label="复制当前选择的地址" showImage="false" />
                 </group>
             </tab>
         </tabs>

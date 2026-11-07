@@ -19,6 +19,15 @@ namespace ExcelVSTO
         {
         }
 
+        /// <summary>
+        /// 返回 Ribbon XML 实现，取代 VSTO 可视化设计器 Ribbon。
+        /// UI 定义在 Ribbon.xml，回调在 Ribbon.Callbacks.cs。
+        /// </summary>
+        protected override Office.IRibbonExtensibility CreateRibbonExtensibilityObject()
+        {
+            return new Ribbon();
+        }
+
         #region VSTO 生成的代码
 
         /// <summary>

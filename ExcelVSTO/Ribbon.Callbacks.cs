@@ -31,7 +31,7 @@ namespace ExcelVSTO
         /// 主窗口 HWND / EXCEL.EXE 路径）写入剪贴板，尾部追加当前工作簿的名称、
         /// 完整路径与活动工作表，供大模型精确定位并访问这个工作簿。
         /// </summary>
-        public void BtnCopyInstanceInfo_Click(Office.IRibbonControl control)
+        public void BtnCopyActiveWorkbookInfo_Click(Office.IRibbonControl control)
         {
             try
             {

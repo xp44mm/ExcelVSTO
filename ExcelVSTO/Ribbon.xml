@@ -44,7 +44,7 @@
                     <button id="btnCreateFromSqlite" onAction="btnCreateFromSqlite_Click" screentip="从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件" label="从SQLite导入工作表" showImage="false" />
                 </group>
                 <group id="group9" label="工作簿">
-                    <button id="btnCopyInstanceInfo" onAction="BtnCopyInstanceInfo_Click" screentip="把当前工作簿的定位信息复制到剪贴板" supertip="复制当前工作簿的名称、完整路径与活动工作表，供大模型精确定位并访问这个工作簿。未保存的工作簿标注为「未保存」。" label="复制当前工作簿" showImage="false" />
+                    <button id="btnCopyActiveWorkbookInfo" onAction="BtnCopyActiveWorkbookInfo_Click" screentip="把当前工作簿的定位信息复制到剪贴板" supertip="复制当前工作簿的名称、完整路径与活动工作表，供大模型精确定位并访问这个工作簿。未保存的工作簿标注为「未保存」。" label="复制当前工作簿" showImage="false" />
                     <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把选择的单元格地址和它的当前值复制到剪贴板" label="复制当前选择的地址" showImage="false" />
                 </group>
             </tab>

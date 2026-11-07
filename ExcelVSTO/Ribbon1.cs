@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Linq;
 using System.Windows;
 using ExcelNumericalMethods;
@@ -6,13 +10,60 @@ using ExcelWPF;
 
 using Microsoft.Office.Interop.Excel;
 using Microsoft.Office.Tools.Ribbon;
+using ComTypes = System.Runtime.InteropServices.ComTypes;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelVSTO
 {
     public partial class Ribbon1
     {
+        // 本实例在运行对象表（ROT）中的唯一名字，供外部进程精确绑定。
+        private static string rotName;
+
+        [DllImport("ole32.dll")]
+        private static extern int GetRunningObjectTable(int reserved, out ComTypes.IRunningObjectTable pprot);
+
+        [DllImport("ole32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern int CreateItemMoniker(string lpszDelim, string lpszObject, out ComTypes.IMoniker ppmk);
+
         private void Ribbon1_Load(object sender, RibbonUIEventArgs e)
         {
+        }
+
+        /// <summary>
+        /// 把当前 Excel 实例的 5 行关键信息复制到剪贴板：
+        /// 采集时间 / PID / ROT 注册名 / 主窗口 HWND / EXCEL.EXE 路径。
+        /// </summary>
+        private void BtnCopyInstanceInfo_Click(object sender, RibbonControlEventArgs e)
+        {
+            try
+            {
+                Excel.Application app = Globals.ThisAddIn.Application;
+
+                int pid;
+                string exePath;
+                using (Process proc = Process.GetCurrentProcess())
+                {
+                    pid = proc.Id;
+                    exePath = SafeGet(() => proc.MainModule.FileName);
+                }
+
+                string name = EnsureRotRegistration(app, pid);
+                long hwnd = GetMainWindowHandle(app);
+                string hwndHex = "0x" + hwnd.ToString("X8", CultureInfo.InvariantCulture);
+
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("[ExcelVSTO 当前 Excel 实例] 采集时间 " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+                sb.AppendLine("PID : " + pid);
+                sb.AppendLine("ROT : !" + name);
+                sb.AppendLine("HWND : " + hwndHex);
+                sb.AppendLine("EXCEL.EXE : " + exePath);
+                System.Windows.Forms.Clipboard.SetText(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "复制实例信息", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BtnSelectInUsedRange_Click(object sender, RibbonControlEventArgs e)
@@ -64,7 +115,7 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 复制选择：把当前选择的单元格地址与公式字符串复制到剪贴板。
+        /// 复制选择：把当前选择的区域地址与当前值二维数组复制到剪贴板。
         /// 格式与核心逻辑在 F# 的 SelectionCopy.copySelection 中实现。
         /// </summary>
         private void BtnCopySelection_Click(object sender, RibbonControlEventArgs e)
@@ -522,14 +573,6 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 脱公式：扫描全部工作表，将公式中含标记函数的单元格固化为当前计算结果，生成副本。
-        /// </summary>
-        private void BtnStripFormulas_Click(object sender, RibbonControlEventArgs e)
-        {
-            PublishStripFormulas();
-        }
-
-        /// <summary>
         /// 更新默认值：扫描当前工作簿全部工作表，不限函数名，处理所有公式为
         /// =IFERROR(函数(...), 常量) 的单元格：将兜底常量替换为该单元格最新真值，并以绿色标记。
         /// 直接在当前工作簿上位修改，不生成副本、不弹输入框与结果确认框（结果用状态栏提示）。
@@ -569,7 +612,7 @@ namespace ExcelVSTO
                     }
                     if (result.ArrayFormulaCells.Length > 0)
                     {
-                        parts.Add($"跳过数组公式 {result.ArrayFormulaCells.Length} 个");
+                        parts.Add($"数组公式写入失败 {result.ArrayFormulaCells.Length} 个");
                     }
                     if (result.ProtectedSheets.Length > 0)
                     {
@@ -585,37 +628,14 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 包裹自定义函数：把活动单元格的公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。
-        /// 兜底值取当前计算结果（.NET "0.##" 格式）；非公式、已是 IFERROR、错误值等不处理。
-        /// 结果在状态栏提示；核心逻辑在 F# 的 Publishing.wrapFunction 中实现。
+        /// 包裹自定义函数：扫描当前工作簿全部工作表，把所有含 dna6 自定义函数（_xll. 前缀或
+        /// 非内置函数名）的公式 =函数(...) 包裹为 =IFERROR(函数(...), 兜底值)。
+        /// 兜底值取当前计算结果；多格数组公式（旧式 CSE 区域 / 新式溢出区）取整个区域的值，
+        /// 兜底值用同形数组常数（如 {1,2;3,4}）；单格用标量。
+        /// 已是 IFERROR、内置函数公式、错误值、受保护工作表不处理。
+        /// 结果在状态栏提示，有跳过项时弹窗列出；核心逻辑在 F# 的 Publishing.wrapWorkbook 中实现。
         /// </summary>
         private void BtnWrapFunction_Click(object sender, RibbonControlEventArgs e)
-        {
-            var app = Globals.ThisAddIn.Application;
-            var cell = app.ActiveCell as Microsoft.Office.Interop.Excel.Range;
-            if (cell == null)
-            {
-                MessageBox.Show("当前没有活动单元格！");
-                return;
-            }
-
-            try
-            {
-                var result = Publishing.wrapFunction(cell);
-                app.StatusBar = result.Message;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// 脱公式：不限函数名，把所有 =IFERROR(函数(...), 常量) 结构的单元格固化为当前计算结果，
-        /// 另存副本，副本名为「当前工作簿名（崔胜利）.xlsx」（与源工作簿同目录）。源工作簿全程不被修改。
-        /// 核心逻辑（扫描、过滤、固化、统计）在 F# 的 Publishing.stripFormulas 中实现。
-        /// </summary>
-        private void PublishStripFormulas()
         {
             var app = Globals.ThisAddIn.Application;
             var wb = app.ActiveWorkbook;
@@ -625,78 +645,157 @@ namespace ExcelVSTO
                 return;
             }
 
-            var oldAlerts = app.DisplayAlerts;
-            string tempPath = null;
             try
             {
-                app.DisplayAlerts = false;
-
-                // 副本名：当前工作簿名（崔胜利）.xlsx；未保存的工作簿存到文档目录
-                var dir = string.IsNullOrEmpty(wb.Path)
-                    ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-                    : wb.Path;
-                var baseName = System.IO.Path.GetFileNameWithoutExtension(wb.Name) + "（崔胜利）";
-                var finalPath = System.IO.Path.Combine(dir, baseName + ".xlsx");
-                var isXlsx = string.Equals(System.IO.Path.GetExtension(wb.Name), ".xlsx", StringComparison.OrdinalIgnoreCase);
-
-                string copyPath;
-                if (isXlsx)
+                var result = Publishing.wrapWorkbook(wb);
+                var text = new System.Text.StringBuilder();
+                text.AppendLine($"包裹自定义函数：已包裹 {result.WrappedCount} 个单元格。");
+                if (result.SkippedCells.Length > 0)
                 {
-                    wb.SaveCopyAs(finalPath);
-                    copyPath = finalPath;
+                    text.AppendLine($"未能包裹 {result.SkippedCells.Length} 个：");
+                    foreach (var item in result.SkippedCells)
+                    {
+                        // F# 元组在 .NET Framework 下是 System.Tuple，不能用 var (a, b) 解构
+                        text.AppendLine($"  {item.Item1}：{item.Item2}");
+                    }
+                }
+                if (result.ProtectedSheets.Length > 0)
+                {
+                    text.AppendLine($"跳过受保护工作表 {result.ProtectedSheets.Length} 个：{string.Join("、", result.ProtectedSheets)}");
+                }
+
+                if (result.WrappedCount == 0 && result.SkippedCells.Length == 0 && result.ProtectedSheets.Length == 0)
+                {
+                    app.StatusBar = "未找到含 dna6 自定义函数的公式。";
+                }
+                else if (result.SkippedCells.Length == 0 && result.ProtectedSheets.Length == 0)
+                {
+                    app.StatusBar = $"包裹自定义函数：已包裹 {result.WrappedCount} 个单元格。";
                 }
                 else
                 {
-                    // 宏工作簿先按原格式另存副本，处理后再另存为 xlsx（不含宏）
-                    tempPath = System.IO.Path.Combine(dir, baseName + System.IO.Path.GetExtension(wb.Name));
-                    wb.SaveCopyAs(tempPath);
-                    copyPath = tempPath;
-                }
-
-                var copy = app.Workbooks.Open(copyPath);
-                try
-                {
-                    var result = Publishing.stripFormulas(copy);
-                    if (isXlsx)
-                    {
-                        copy.Save();
-                    }
-                    else
-                    {
-                        copy.SaveAs(finalPath, XlFileFormat.xlOpenXMLWorkbook);
-                    }
-
-                    var text = Publishing.formatSummary(false, finalPath, result);
-                    if (result.ErrorCells.Length == 0
-                        && result.UnconformCells.Length == 0
-                        && result.ArrayFormulaCells.Length == 0
-                        && result.ProtectedSheets.Length == 0)
-                    {
-                        MessageBox.Show(text);
-                    }
-                    else
-                    {
-                        var detail = new TextWindow("脱公式结果", text);
-                        detail.ShowDialog();
-                    }
-                }
-                finally
-                {
-                    copy.Close(false);
+                    var detail = new TextWindow("包裹自定义函数结果", text.ToString().TrimEnd());
+                    detail.ShowDialog();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
-            finally
+        }
+
+        /// <summary>
+        /// 旧式 CSE 数组公式一键转换为新式 spill（溢出）数组公式：
+        /// 扫描当前工作簿全部工作表，把 Ctrl+Shift+Enter 录入的数组公式整块清除后，
+        /// 只在左上角单元格写入同一公式，由 Excel 自动溢出。
+        /// 核心逻辑在 F# 的 ArrayFormula.convertCseToSpill 中实现。
+        /// </summary>
+        private void BtnCseToSpill_Click(object sender, RibbonControlEventArgs e)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var wb = app.ActiveWorkbook;
+            if (wb == null)
             {
-                if (tempPath != null && System.IO.File.Exists(tempPath))
+                MessageBox.Show("当前没有打开的工作簿！");
+                return;
+            }
+
+            try
+            {
+                var result = ArrayFormula.convertCseToSpill(wb);
+                var text = new System.Text.StringBuilder();
+                text.AppendLine($"旧式 CSE 数组公式已转换为新式溢出公式 {result.ConvertedAddresses.Length} 处。");
+                if (result.ConvertedAddresses.Length > 0)
                 {
-                    System.IO.File.Delete(tempPath);
+                    text.AppendLine("已转换：");
+                    foreach (var addr in result.ConvertedAddresses)
+                    {
+                        text.AppendLine("  " + addr);
+                    }
                 }
-                app.DisplayAlerts = oldAlerts;
+                if (result.FailedCells.Length > 0)
+                {
+                    text.AppendLine($"转换失败（已回滚）{result.FailedCells.Length} 处：");
+                    foreach (var item in result.FailedCells)
+                    {
+                        // F# 元组在 .NET Framework 下是 System.Tuple，不能用 var (a, b) 解构
+                        text.AppendLine($"  {item.Item1}：{item.Item2}");
+                    }
+                }
+                if (result.ProtectedSheets.Length > 0)
+                {
+                    text.AppendLine($"跳过受保护工作表 {result.ProtectedSheets.Length} 个：{string.Join("、", result.ProtectedSheets)}");
+                }
+
+                if (result.FailedCells.Length == 0 && result.ProtectedSheets.Length == 0)
+                {
+                    app.StatusBar = $"旧式 CSE 数组公式已转换为新式溢出公式 {result.ConvertedAddresses.Length} 处。";
+                }
+                else
+                {
+                    var detail = new TextWindow("转溢出公式结果", text.ToString().TrimEnd());
+                    detail.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
             }
         }
+
+        /// <summary>
+        /// 把当前 Excel Application 以 !ExcelVSTO.Instance.&lt;PID&gt; 注册到 ROT。
+        /// flag=0 为弱注册：ROT 不持有强引用，Excel 退出后条目自动消失。
+        /// </summary>
+        private static string EnsureRotRegistration(Excel.Application app, int pid)
+        {
+            if (rotName != null)
+            {
+                return rotName;
+            }
+
+            string name = "ExcelVSTO.Instance." + pid.ToString(CultureInfo.InvariantCulture);
+
+            ComTypes.IRunningObjectTable table;
+            int hr = GetRunningObjectTable(0, out table);
+            if (hr < 0) { Marshal.ThrowExceptionForHR(hr); }
+
+            ComTypes.IMoniker moniker;
+            hr = CreateItemMoniker("!", name, out moniker);
+            if (hr < 0) { Marshal.ThrowExceptionForHR(hr); }
+
+            table.Register(0, app, moniker);
+            rotName = name;
+            return name;
+        }
+
+        private static long GetMainWindowHandle(Excel.Application app)
+        {
+            try
+            {
+                return (long)unchecked((uint)Convert.ToInt32(app.Hwnd, CultureInfo.InvariantCulture));
+            }
+            catch
+            {
+                using (Process proc = Process.GetCurrentProcess())
+                {
+                    return proc.MainWindowHandle.ToInt64();
+                }
+            }
+        }
+
+        private static string SafeGet(Func<string> getter)
+        {
+            try
+            {
+                string value = getter();
+                return string.IsNullOrEmpty(value) ? "(无)" : value;
+            }
+            catch
+            {
+                return "(读取失败)";
+            }
+        }
+
     }
 }

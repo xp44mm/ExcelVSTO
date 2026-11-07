@@ -4,10 +4,13 @@ open System
 open System.Globalization
 open Microsoft.Office.Interop.Excel
 
-/// 发布辅助：「脱公式」与「更新默认值」批量处理。
-/// 两者处理对象一致：不限函数名，凡 =IFERROR(函数(参数...), 常量) 结构（第一参数为函数调用、第二参数为常量）均处理；
+/// 发布辅助：「脱公式」与「更新默认值」批量处理，以及自定义函数的 IFERROR 包裹。
+/// 前两者处理对象一致：不限函数名，凡 =IFERROR(函数(参数...), 常量) 结构（第一参数为函数调用、第二参数为常量）均处理；
 /// 更新默认值仅替换兜底常量为最新真值并以绿色标记（当前工作簿上位修改）；
 /// 脱公式将目标单元格固化为当前计算结果（在副本上进行）。
+///
+/// 数组公式（新旧两式）一视同仁地处理：多格区域整块读写，
+/// 旧式 CSE 走 FormulaArray，新式溢出只写锚点，区域内部单元格一律跳过（见 ArrayFormula）。
 module Publishing =
 
     /// 批量处理结果
@@ -18,7 +21,8 @@ module Publishing =
           ErrorCells: (string * string) array
           /// 不符合 IFERROR(函数(...), 常量/兜底) 处理条件而跳过的单元格（工作表!地址, 公式）
           UnconformCells: (string * string) array
-          /// 多格数组公式而跳过的单元格（工作表!地址, 公式）；单格数组公式按普通单元格处理
+          /// 数组公式（旧式 CSE 区域 / 新式溢出区）写入失败而跳过的单元格（工作表!地址, 公式）。
+          /// 正常路径下数组公式是整块处理的：多格按块读写、单格按普通单元格处理，只有写入抛异常时才记到这里
           ArrayFormulaCells: (string * string) array
           /// 受保护且无法解除保护而跳过的工作表
           ProtectedSheets: string array }
@@ -51,17 +55,9 @@ module Publishing =
         sprintf "%s!%s%d" ws.Name (columnLetters cell.Column) cell.Row
 
     /// 工作表中全部含公式的单元格（SpecialCells 优化；无公式时为空序列）。
-    /// SpecialCells 的结果可能是多个不连续区域，必须按区域逐个遍历，否则取不到全部单元格。
+    /// 实现见 Traversal.getFormulaCells（新式溢出公式只有锚点会出现，旧式 CSE 则整片区域都会出现）。
     let getFormulaCells (ws: Worksheet) : seq<Range> =
-        try
-            let used = ws.UsedRange
-            let formulas = used.SpecialCells(XlCellType.xlCellTypeFormulas)
-            seq {
-                for a in 1 .. formulas.Areas.Count do
-                    let area = formulas.Areas.[a]
-                    yield! Traversal.getCellsOfRange area
-            }
-        with _ -> Seq.empty
+        Traversal.getFormulaCells ws
 
     /// 字符是否属于 Excel 函数名字符（字母、数字、下划线、点）。
     /// 用于识别 IFERROR 第一参数开头的函数名（isFunctionCallArg）。
@@ -240,6 +236,31 @@ module Publishing =
         | :? IConvertible as c -> c.ToString(CultureInfo.InvariantCulture)
         | other -> Quotation.quote (string other)
 
+    /// 把二维值数组格式化为 Excel 数组常数，如 {1,2;3,4}：逗号分列、分号换行。
+    /// 多格数组公式（旧式 CSE 区域 / 新式溢出区）的兜底值必须用同形数组常数，
+    /// 否则兜底值的形状与区域对不上，出错时只会填出一个格子。
+    let formatArrayLiteral (values: obj[,]) : string =
+        let r0 = values.GetLowerBound 0
+        let c0 = values.GetLowerBound 1
+        let rows =
+            [ for r in 0 .. values.GetLength 0 - 1 ->
+                [ for c in 0 .. values.GetLength 1 - 1 -> formatLiteral values.[r0 + r, c0 + c] ]
+                |> String.concat "," ]
+        "{" + String.concat ";" rows + "}"
+
+    /// 读取单元格当前值：错误值返回 Choice2Of2 显示文本，正常值返回 Choice1Of2。
+    let private cellValue (cell: Range) : Choice<obj, string> =
+        try
+            match cell.Value2 with
+            | :? int as n when n < 0 -> Choice2Of2 (errorText n)
+            | v -> Choice1Of2 v
+        with _ -> Choice2Of2 "#ERR"
+
+    /// 公式中是否含有自定义函数（Excel-DNA / XLL / VBA 宏表函数等）。
+    /// 判定口径见 BuiltinFunctions.hasCustomFunction。
+    let hasCustomFunction (formula: string) : bool =
+        BuiltinFunctions.hasCustomFunction formula
+
     /// 批量处理工作簿：不限函数名，处理所有 =IFERROR(函数(...), 常量) 结构的单元格
     /// （第一参数为函数调用、第二参数为常量）。
     /// updateDefaults = true 时更新默认值：保留 IFERROR 结构，将兜底常量替换为最新真值，并以绿色标记；
@@ -265,39 +286,76 @@ module Publishing =
                 for cell in getFormulaCells ws do
                     // 不限函数名：凡 IFERROR 公式都进入结构判定（更新默认值与脱公式一致）
                     if isIfErrorFormula cell then
-                        if unbox cell.HasArray && not (isSingleCellArray cell) then
-                            // 多格数组公式跳过，避免破坏；单格数组公式按普通单元格处理
-                            arrays.Add(address cell, string (cell.Formula))
+                        if not (ArrayFormula.isArrayMaster cell) then
+                            // 数组公式区域内部单元格：由区域主单元格统一处理，单独改会破坏数组
+                            ()
                         elif not (isMergeTopLeft cell) then
                             () // 合并区域仅处理左上角
                         else
-                            // 读取当前计算结果（真值）；错误值跳过并记录
-                            let value =
-                                try
-                                    match cell.Value2 with
-                                    | :? int as n when n < 0 -> Choice2Of2 (errorText n)
-                                    | v -> Choice1Of2 v
-                                with _ -> Choice2Of2 "#ERR"
-                            match value with
-                            | Choice2Of2 text -> errors.Add(address cell, text)
-                            | Choice1Of2 v ->
-                                let formula = string (cell.Formula)
+                            let formula = string (cell.Formula)
+                            // 先查错误值（取不到真值就不必再看结构），与结构判定分两步：
+                            // 多格数组公式要整块查，任一格出错就跳过整块。
+                            let errorInBlock : (Range * string) option =
+                                if ArrayFormula.isMultiCellArray cell then
+                                    match ArrayFormula.arrayRange cell with
+                                    | Some range ->
+                                        Traversal.getCellsOfRange range
+                                        |> Seq.tryPick (fun c ->
+                                            match cellValue c with
+                                            | Choice2Of2 text -> Some(c, text)
+                                            | _ -> None)
+                                    | None -> None
+                                else
+                                    match cellValue cell with
+                                    | Choice2Of2 text -> Some(cell, text)
+                                    | _ -> None
+                            match errorInBlock with
+                            | Some (b, text) -> errors.Add(address b, text)
+                            | None ->
                                 match splitIfError formula with
                                 | Some (arg1, arg2) when
                                     isFunctionCallArg arg1
                                     && isConstantLiteral arg2 ->
-                                    if updateDefaults then
-                                        // 更新默认值：保留第一个参数，兜底值替换为最新真值；
-                                        // 单格数组公式用 FormulaArray 写入以保持数组公式属性
-                                        let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
-                                        if unbox cell.HasArray then cell.FormulaArray <- newFormula
-                                        else Formula2.set cell newFormula
-                                        // 以绿色标记已更新的目标单元格
-                                        cell.Interior.Color <- float UpdateDefaultsColor
+                                    if ArrayFormula.isMultiCellArray cell then
+                                        // ---- 多格数组公式（旧式 CSE 区域 / 新式溢出区）：整块读取、整块写回 ----
+                                        match ArrayFormula.arrayRange cell with
+                                        | None -> unconform.Add(address cell, formula)
+                                        | Some range ->
+                                            let values = range.Value2 :?> obj[,]
+                                            try
+                                                if updateDefaults then
+                                                    // 兜底值换成同形数组常数；旧式用 FormulaArray 整块写入保持数组属性
+                                                    let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatArrayLiteral values)
+                                                    if ArrayFormula.hasLegacyArray cell then range.FormulaArray <- newFormula
+                                                    else Formula2.set cell newFormula
+                                                    cell.Interior.Color <- float UpdateDefaultsColor
+                                                else
+                                                    // 脱公式：清掉整块数组公式（溢出公式清锚点即可），再把当前结果写回原区域
+                                                    (if ArrayFormula.hasLegacyArray cell then range else cell).ClearContents() |> ignore
+                                                    range.Value2 <- values
+                                                processed <- processed + 1
+                                            with _ ->
+                                                arrays.Add(address cell, formula)
                                     else
-                                        // 脱公式：固化当前计算结果，清除公式
-                                        cell.Value2 <- v
-                                    processed <- processed + 1
+                                        // ---- 单格（含单格旧式 CSE 数组公式）----
+                                        match cellValue cell with
+                                        | Choice2Of2 text -> errors.Add(address cell, text)
+                                        | Choice1Of2 v ->
+                                            try
+                                                if updateDefaults then
+                                                    // 更新默认值：保留第一个参数，兜底值替换为最新真值；
+                                                    // 单格数组公式用 FormulaArray 写入以保持数组公式属性
+                                                    let newFormula = sprintf "=IFERROR(%s,%s)" arg1 (formatLiteral v)
+                                                    if unbox cell.HasArray then cell.FormulaArray <- newFormula
+                                                    else Formula2.set cell newFormula
+                                                    // 以绿色标记已更新的目标单元格
+                                                    cell.Interior.Color <- float UpdateDefaultsColor
+                                                else
+                                                    // 脱公式：固化当前计算结果，清除公式
+                                                    cell.Value2 <- v
+                                                processed <- processed + 1
+                                            with _ ->
+                                                arrays.Add(address cell, formula)
                                 | _ ->
                                     unconform.Add(address cell, formula)
                 if isProtected then
@@ -320,26 +378,52 @@ module Publishing =
     let stripFormulas (wb: Workbook) : RunResult =
         run (false, wb)
 
-    /// 包裹自定义函数：把单个单元格公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。
-    /// 兜底值取单元格当前计算结果，按 .NET "0.##" 格式化为公式字面量；
-    /// 单格数组公式用 FormulaArray 写入以保持数组属性。
-    /// 单元格不是公式、已是 IFERROR 公式、多格数组公式或当前为错误值时返回 Wrapped=false 及原因。
-    let wrapFunction (cell: Range) : WrapResult =
-        let addr = cellAddress cell.Worksheet cell
+    /// 包裹一个公式单元格：=函数(...) 包裹为 =IFERROR(函数(...), 兜底值)。
+    ///
+    /// 兜底值取当前计算结果，按 .NET "0.##" 格式化；
+    /// 多格数组公式（旧式 CSE 区域 / 新式溢出区）取整个区域的值，兜底值用同形数组常数（如 {1,2;3,4}），
+    /// 单格保持标量兜底值。旧式数组公式用 FormulaArray 整块写入以保持数组属性，新式溢出写锚点即可。
+    ///
+    /// 非公式、已是 IFERROR、处于数组区域内部（非主单元格）、错误值时返回 Wrapped=false 及原因。
+    let tryWrapCell (cell: Range) : WrapResult =
+        let ws = cell.Worksheet
+        let addr = cellAddress ws cell
         if not (unbox cell.HasFormula) then
-            { Wrapped = false; Address = addr; Message = "当前单元格不是公式，未包裹。" }
+            { Wrapped = false; Address = addr; Message = "不是公式，未包裹。" }
         elif isIfErrorFormula cell then
-            { Wrapped = false; Address = addr; Message = "当前单元格已是 IFERROR 公式，无需重复包裹。" }
-        elif unbox cell.HasArray && not (isSingleCellArray cell) then
-            { Wrapped = false; Address = addr; Message = "当前单元格属于多格数组公式，未包裹。" }
+            { Wrapped = false; Address = addr; Message = "已是 IFERROR 公式，无需重复包裹。" }
+        elif not (ArrayFormula.isArrayMaster cell) then
+            { Wrapped = false; Address = addr; Message = "处于数组公式区域内部，须改区域主单元格，未包裹。" }
+        elif ArrayFormula.isMultiCellArray cell then
+            match ArrayFormula.arrayRange cell with
+            | None ->
+                { Wrapped = false; Address = addr; Message = "取不到数组公式区域，未包裹。" }
+            | Some range ->
+                let bad =
+                    Traversal.getCellsOfRange range
+                    |> Seq.tryPick (fun c ->
+                        match cellValue c with
+                        | Choice2Of2 text -> Some(c, text)
+                        | _ -> None)
+                match bad with
+                | Some (b, text) ->
+                    { Wrapped = false
+                      Address = addr
+                      Message = sprintf "数组区域内 %s 为错误值（%s），无法取兜底值，未包裹。" (cellAddress ws b) text }
+                | None ->
+                    let formula = string (cell.Formula)
+                    let body = formula.TrimStart().TrimStart('=')
+                    let newFormula = sprintf "=IFERROR(%s,%s)" body (formatArrayLiteral (range.Value2 :?> obj[,]))
+                    try
+                        if ArrayFormula.hasLegacyArray cell then range.FormulaArray <- newFormula
+                        else Formula2.set cell newFormula
+                        { Wrapped = true
+                          Address = addr
+                          Message = sprintf "已包裹 %s 为 %s" addr newFormula }
+                    with ex ->
+                        { Wrapped = false; Address = addr; Message = sprintf "写入失败：%s" ex.Message }
         else
-            let value =
-                try
-                    match cell.Value2 with
-                    | :? int as n when n < 0 -> Choice2Of2 (errorText n)
-                    | v -> Choice1Of2 v
-                with _ -> Choice2Of2 "#ERR"
-            match value with
+            match cellValue cell with
             | Choice2Of2 text ->
                 { Wrapped = false
                   Address = addr
@@ -348,11 +432,74 @@ module Publishing =
                 let formula = string (cell.Formula)
                 let body = formula.TrimStart().TrimStart('=')
                 let newFormula = sprintf "=IFERROR(%s,%s)" body (formatLiteral v)
-                if unbox cell.HasArray then cell.FormulaArray <- newFormula
-                else Formula2.set cell newFormula
-                { Wrapped = true
-                  Address = addr
-                  Message = sprintf "已包裹 %s 为 %s" addr newFormula }
+                try
+                    if unbox cell.HasArray then cell.FormulaArray <- newFormula
+                    else Formula2.set cell newFormula
+                    { Wrapped = true
+                      Address = addr
+                      Message = sprintf "已包裹 %s 为 %s" addr newFormula }
+                with ex ->
+                    { Wrapped = false; Address = addr; Message = sprintf "写入失败：%s" ex.Message }
+
+    /// 包裹自定义函数：把单个单元格公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。
+    /// 详细规则见 tryWrapCell。
+    let wrapFunction (cell: Range) : WrapResult =
+        tryWrapCell cell
+
+    /// 工作簿批量包裹结果
+    type WrapRunResult =
+        { /// 已包裹的单元格数
+          WrappedCount: int
+          /// 已包裹的（工作表!地址, 新公式）
+          WrappedCells: (string * string) array
+          /// 含自定义函数但未能包裹的（工作表!地址, 原因）
+          SkippedCells: (string * string) array
+          /// 受保护且无法解除保护而跳过的工作表
+          ProtectedSheets: string array }
+
+    /// 包裹当前工作簿中所有含自定义函数（Excel-DNA / XLL）的公式：
+    /// =函数(...) 包裹为 =IFERROR(函数(...), 兜底值)。
+    ///
+    /// 与单个单元格版的区别在范围与兜底值形状：
+    ///   - 范围：扫描当前工作簿全部工作表，只动含自定义函数的公式（内置函数公式原样保留）；
+    ///   - 兜底值：多格数组公式（旧式 CSE 区域 / 新式溢出区）用同形数组常数，单格用标量。
+    /// 已是 IFERROR、合并区域非左上角、数组区域内部、错误值、受保护工作表均跳过。
+    let wrapWorkbook (wb: Workbook) : WrapRunResult =
+        let wrapped = ResizeArray<string * string>()
+        let skipped = ResizeArray<string * string>()
+        let protectedSheets = ResizeArray<string>()
+        try
+            wb.Application.Calculate()
+        with _ -> ()
+        for ws in Traversal.getWorksheets wb do
+            let wasProtected = unbox ws.ProtectContents
+            if wasProtected then
+                try ws.Unprotect()
+                with _ -> ()
+            if unbox ws.ProtectContents then
+                protectedSheets.Add ws.Name
+            else
+                for cell in getFormulaCells ws |> Seq.toList do
+                    let formula = string (cell.Formula)
+                    if isIfErrorFormula cell then
+                        () // 已经是 IFERROR，不重复包裹
+                    elif not (isMergeTopLeft cell) then
+                        () // 合并区域仅处理左上角
+                    elif not (ArrayFormula.isArrayMaster cell) then
+                        () // 数组区域内部单元格由主单元格统一处理
+                    elif hasCustomFunction formula then
+                        let result = tryWrapCell cell
+                        if result.Wrapped then
+                            wrapped.Add(result.Address, result.Message)
+                        else
+                            skipped.Add(result.Address, result.Message)
+            if wasProtected then
+                try ws.Protect()
+                with _ -> ()
+        { WrappedCount = wrapped.Count
+          WrappedCells = wrapped.ToArray()
+          SkippedCells = skipped.ToArray()
+          ProtectedSheets = protectedSheets.ToArray() }
 
     /// 生成处理结果提示文本
     let formatSummary (updateDefaults: bool, path: string, result: RunResult) : string =
@@ -373,7 +520,7 @@ module Publishing =
             for (addr, formula) in result.UnconformCells do
                 sb.AppendLine(sprintf "  %s：%s" addr formula) |> ignore
         if result.ArrayFormulaCells.Length > 0 then
-            sb.AppendLine(sprintf "跳过数组公式单元格 %d 个：" result.ArrayFormulaCells.Length) |> ignore
+            sb.AppendLine(sprintf "数组公式写入失败而跳过的单元格 %d 个：" result.ArrayFormulaCells.Length) |> ignore
             for (addr, formula) in result.ArrayFormulaCells do
                 sb.AppendLine(sprintf "  %s：%s" addr formula) |> ignore
         if result.ProtectedSheets.Length > 0 then

@@ -117,4 +117,7 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="btnWrapFunction.SuperTip" xml:space="preserve">
+    <value>扫描当前工作簿全部工作表，把所有含 dna6 自定义函数（_xll. 前缀或非内置函数名）的公式 =函数(...) 包裹为 =IFERROR(函数(...), 兜底值)。兜底值即当前计算结果（.NET "0.##" 格式）；多格数组公式（旧式 CSE 区域、新式溢出区）取整个区域的值，兜底值用同形数组常数（如 {1,2;3,4}）。内置函数公式、已是 IFERROR、错误值、受保护工作表不处理；有跳过项时弹窗列出明细，否则在状态栏提示。</value>
+  </data>
 </root>

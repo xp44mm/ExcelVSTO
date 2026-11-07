@@ -34,12 +34,14 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Ribbon1));
             this.tab1 = this.Factory.CreateRibbonTab();
             this.group1 = this.Factory.CreateRibbonGroup();
             this.btnSelectInUsedRange = this.Factory.CreateRibbonButton();
             this.btnSelectArray = this.Factory.CreateRibbonButton();
             this.btnMergeCells = this.Factory.CreateRibbonButton();
             this.btnCopySelection = this.Factory.CreateRibbonButton();
+            this.btnDeleteRelayCell = this.Factory.CreateRibbonButton();
             this.group2 = this.Factory.CreateRibbonGroup();
             this.btnUnroll = this.Factory.CreateRibbonButton();
             this.btnRollup = this.Factory.CreateRibbonButton();
@@ -58,16 +60,17 @@
             this.clearName_button = this.Factory.CreateRibbonButton();
             this.group6 = this.Factory.CreateRibbonGroup();
             this.btn_referencesOfWorksheet = this.Factory.CreateRibbonButton();
-            this.btnDeleteRelayCell = this.Factory.CreateRibbonButton();
             this.btn_dependentsOfWorksheet = this.Factory.CreateRibbonButton();
             this.btnMarkCrossSheetRefs = this.Factory.CreateRibbonButton();
             this.group7 = this.Factory.CreateRibbonGroup();
-            this.btnStripFormulas = this.Factory.CreateRibbonButton();
             this.btnUpdateDefaults = this.Factory.CreateRibbonButton();
             this.btnWrapFunction = this.Factory.CreateRibbonButton();
+            this.btnCseToSpill = this.Factory.CreateRibbonButton();
             this.group8 = this.Factory.CreateRibbonGroup();
             this.btnSaveToSqlite = this.Factory.CreateRibbonButton();
             this.btnCreateFromSqlite = this.Factory.CreateRibbonButton();
+            this.group9 = this.Factory.CreateRibbonGroup();
+            this.btnCopyInstanceInfo = this.Factory.CreateRibbonButton();
             this.tab1.SuspendLayout();
             this.group1.SuspendLayout();
             this.group2.SuspendLayout();
@@ -77,6 +80,7 @@
             this.group6.SuspendLayout();
             this.group7.SuspendLayout();
             this.group8.SuspendLayout();
+            this.group9.SuspendLayout();
             this.SuspendLayout();
             // 
             // tab1
@@ -90,6 +94,7 @@
             this.tab1.Groups.Add(this.group6);
             this.tab1.Groups.Add(this.group7);
             this.tab1.Groups.Add(this.group8);
+            this.tab1.Groups.Add(this.group9);
             this.tab1.Label = "TabAddIns";
             this.tab1.Name = "tab1";
             // 
@@ -99,6 +104,7 @@
             this.group1.Items.Add(this.btnSelectArray);
             this.group1.Items.Add(this.btnMergeCells);
             this.group1.Items.Add(this.btnCopySelection);
+            this.group1.Items.Add(this.btnDeleteRelayCell);
             this.group1.Label = "选择工具";
             this.group1.Name = "group1";
             // 
@@ -125,10 +131,20 @@
             // 
             // btnCopySelection
             // 
-            this.btnCopySelection.Label = "复制选择";
+            this.btnCopySelection.Label = "复制地址";
             this.btnCopySelection.Name = "btnCopySelection";
-            this.btnCopySelection.ScreenTip = "把当前选择的单元格地址和公式字符串复制到剪贴板";
+            this.btnCopySelection.ScreenTip = "把选择的单元格地址和它的当前值复制到剪贴板";
             this.btnCopySelection.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnCopySelection_Click);
+            // 
+            // btnDeleteRelayCell
+            // 
+            this.btnDeleteRelayCell.Label = "删除中转单元格";
+            this.btnDeleteRelayCell.Name = "btnDeleteRelayCell";
+            this.btnDeleteRelayCell.ScreenTip = "删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格";
+            this.btnDeleteRelayCell.SuperTip = "当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），内联到其他公式后不必加括号、也不改变" +
+    "语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。区域引用包含本单元格、多格数组、合并单元格、公式带顶层运" +
+    "算符（如 A1+B1）时不受理，且不做任何改动。";
+            this.btnDeleteRelayCell.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnDeleteRelayCell_Click);
             // 
             // group2
             // 
@@ -252,7 +268,6 @@
             // group6
             // 
             this.group6.Items.Add(this.btn_referencesOfWorksheet);
-            this.group6.Items.Add(this.btnDeleteRelayCell);
             this.group6.Items.Add(this.btn_dependentsOfWorksheet);
             this.group6.Items.Add(this.btnMarkCrossSheetRefs);
             this.group6.Label = "工作表";
@@ -264,16 +279,6 @@
             this.btn_referencesOfWorksheet.Name = "btn_referencesOfWorksheet";
             this.btn_referencesOfWorksheet.Tag = "工作表输入";
             this.btn_referencesOfWorksheet.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btn_referencesOfWorksheet_Click);
-            // 
-            // btnDeleteRelayCell
-            // 
-            this.btnDeleteRelayCell.Label = "删除中转单元格";
-            this.btnDeleteRelayCell.Name = "btnDeleteRelayCell";
-            this.btnDeleteRelayCell.ScreenTip = "删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格";
-            this.btnDeleteRelayCell.SuperTip = "当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），" +
-    "内联到其他公式后不必加括号、也不改变语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。" +
-    "区域引用包含本单元格、多格数组、合并单元格、公式带顶层运算符（如 A1+B1）时不受理，且不做任何改动。";
-            this.btnDeleteRelayCell.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnDeleteRelayCell_Click);
             // 
             // btn_dependentsOfWorksheet
             // 
@@ -287,26 +292,17 @@
             this.btnMarkCrossSheetRefs.Label = "标记跨表引用";
             this.btnMarkCrossSheetRefs.Name = "btnMarkCrossSheetRefs";
             this.btnMarkCrossSheetRefs.ScreenTip = "给被其他工作表公式引用的单元格涂上独特颜色（洋红）";
-            this.btnMarkCrossSheetRefs.SuperTip = "扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某" +
-    "个单元格，就把被引用的单元格背景色涂成洋红。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。";
+            this.btnMarkCrossSheetRefs.SuperTip = "扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某个单元格，就把被引用的单元格背景色涂成洋红" +
+    "。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。";
             this.btnMarkCrossSheetRefs.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnMarkCrossSheetRefs_Click);
             // 
             // group7
             // 
-            this.group7.Items.Add(this.btnStripFormulas);
             this.group7.Items.Add(this.btnUpdateDefaults);
             this.group7.Items.Add(this.btnWrapFunction);
-            this.group7.Label = "发布辅助";
+            this.group7.Items.Add(this.btnCseToSpill);
+            this.group7.Label = "DNA6";
             this.group7.Name = "group7";
-            // 
-            // btnStripFormulas
-            // 
-            this.btnStripFormulas.Label = "另存为脱公式";
-            this.btnStripFormulas.Name = "btnStripFormulas";
-            this.btnStripFormulas.ScreenTip = "把含标记函数的公式固化为计算结果，生成副本供普通接收者使用";
-            this.btnStripFormulas.SuperTip = "扫描全部工作表，将公式中含标记函数（如 电机额定功率）的单元格固化为当前计算结果（清除公式与函数名）；普通公式原样保留。源工作簿不被修改，另存为「发布版_固化_时" +
-    "间戳.xlsx」。";
-            this.btnStripFormulas.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnStripFormulas_Click);
             // 
             // btnUpdateDefaults
             // 
@@ -314,17 +310,27 @@
             this.btnUpdateDefaults.Name = "btnUpdateDefaults";
             this.btnUpdateDefaults.ScreenTip = "直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）";
             this.btnUpdateDefaults.SuperTip = "直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿" +
-    "色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。";
+    "色标记，接收者无本机函数时也能看到最新结果。新旧两种数组公式都处理：多格区域（旧式 CSE 区域、新式溢出区）整块读取、兜底值换成同形数组常数（如 {1,2;3" +
+    ",4}），单格用标量；区域内非主单元格跳过。不生成副本，结果在状态栏提示。";
             this.btnUpdateDefaults.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnUpdateDefaults_Click);
             // 
             // btnWrapFunction
             // 
-            this.btnWrapFunction.Label = "包裹自定义函数";
+            this.btnWrapFunction.Label = "包裹全部自定义函数";
             this.btnWrapFunction.Name = "btnWrapFunction";
-            this.btnWrapFunction.ScreenTip = "把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果";
-            this.btnWrapFunction.SuperTip = "选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET \"0.##\" 格式），" +
-    "包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。";
+            this.btnWrapFunction.ScreenTip = "把当前工作簿中所有含 dna6 自定义函数的公式包裹为 IFERROR";
+            this.btnWrapFunction.SuperTip = resources.GetString("btnWrapFunction.SuperTip");
             this.btnWrapFunction.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnWrapFunction_Click);
+            // 
+            // btnCseToSpill
+            // 
+            this.btnCseToSpill.Label = "转溢出公式";
+            this.btnCseToSpill.Name = "btnCseToSpill";
+            this.btnCseToSpill.ScreenTip = "把当前工作簿中旧式 CSE 数组公式一键转换为新式溢出（spill）公式";
+            this.btnCseToSpill.SuperTip = "扫描当前工作簿全部工作表，把 Ctrl+Shift+Enter 录入的旧式 CSE 数组公式整块清除后，只在左上角单元格写入同一公式，由 Excel 自动溢出。转" +
+    "换后锚点若为错误值（多半是溢出被相邻数据阻挡变成 #SPILL!），自动回滚为原来的旧式数组公式并计入失败。工作簿受保护时先尝试无密码解除保护，处理完再按原样保" +
+    "护回去；结果在状态栏提示，有失败项时弹窗列出。";
+            this.btnCseToSpill.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnCseToSpill_Click);
             // 
             // group8
             // 
@@ -346,6 +352,20 @@
             this.btnCreateFromSqlite.Name = "btnCreateFromSqlite";
             this.btnCreateFromSqlite.ScreenTip = "从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件";
             this.btnCreateFromSqlite.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.btnCreateFromSqlite_Click);
+            // 
+            // group9
+            // 
+            this.group9.Items.Add(this.btnCopyInstanceInfo);
+            this.group9.Label = "实例";
+            this.group9.Name = "group9";
+            // 
+            // btnCopyInstanceInfo
+            // 
+            this.btnCopyInstanceInfo.Label = "复制实例信息";
+            this.btnCopyInstanceInfo.Name = "btnCopyInstanceInfo";
+            this.btnCopyInstanceInfo.ScreenTip = "复制当前 Excel 实例的关键信息";
+            this.btnCopyInstanceInfo.SuperTip = "把采集时间、PID、ROT 注册名、主窗口 HWND 与 EXCEL.EXE 路径共 5 行复制到剪贴板，供大模型定位并访问这个 Excel 实例。";
+            this.btnCopyInstanceInfo.Click += new Microsoft.Office.Tools.Ribbon.RibbonControlEventHandler(this.BtnCopyInstanceInfo_Click);
             // 
             // Ribbon1
             // 
@@ -371,6 +391,8 @@
             this.group7.PerformLayout();
             this.group8.ResumeLayout(false);
             this.group8.PerformLayout();
+            this.group9.ResumeLayout(false);
+            this.group9.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -408,9 +430,11 @@
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnSaveToSqlite;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCreateFromSqlite;
         internal Microsoft.Office.Tools.Ribbon.RibbonGroup group7;
-        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnStripFormulas;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnUpdateDefaults;
         internal Microsoft.Office.Tools.Ribbon.RibbonButton btnWrapFunction;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCseToSpill;
+        internal Microsoft.Office.Tools.Ribbon.RibbonGroup group9;
+        internal Microsoft.Office.Tools.Ribbon.RibbonButton btnCopyInstanceInfo;
     }
 
     partial class ThisRibbonCollection

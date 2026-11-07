@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<customUI onLoad="Ribbon_Load" xmlns="http://schemas.microsoft.com/office/2006/01/customui">
+    <ribbon>
+        <tabs>
+            <tab idMso="TabAddIns">
+                <group id="group1" label="选择工具">
+                    <button id="btnSelectInUsedRange" onAction="BtnSelectInUsedRange_Click" screentip="将整行整列的选择限定在已使用的范围内" label="缩小选择" showImage="false" />
+                    <button id="btnSelectArray" onAction="BtnSelectArray_Click" screentip="扩展当前单元格为数组公式的范围" label="选择数组" showImage="false" />
+                    <button id="btnMergeCells" onAction="BtnMergeCells_Click" supertip="合并单元格及其内容" label="合并单元格" showImage="false" />
+                    <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把当前选择的单元格地址和公式字符串复制到剪贴板" label="复制选择" showImage="false" />
+                </group>
+                <group id="group2" label="表格工具">
+                    <button id="btnUnroll" onAction="BtnUnroll_Click" screentip="unroll" supertip="填充下方的空单元格" label="展开列" showImage="false" />
+                    <button id="btnRollup" onAction="BtnRollup_Click" screentip="rollup" supertip="合并相同值到最顶单元格" label="卷起列" showImage="false" />
+                    <button id="btnAlternateRows" onAction="BtnAlternateRows_Click" supertip="交替行着色，取第一个单元格颜色" label="交替行" showImage="false" />
+                    <button id="btnInsertBlank" onAction="BtnInsertBlank_Click" supertip="在不同类别的行之间插入空行" label="插入空行" showImage="false" />
+                    <button id="btnRemoveBlank" onAction="BtnRemoveBlank_Click" supertip="删除空行" label="删除空行" showImage="false" />
+                    <button id="btnVerticalBorder" onAction="BtnVerticalBorder_Click" screentip="清除全部框线，为每个单元格添加左右竖框线，并加顶底框线" supertip="对当前选择区域：1 清除全部框线；2 为每个单元格添加左右竖框线；3 给最顶行添加上框线；4 给最底行添加下框线。线型为细实线。" label="竖框线" showImage="false" />
+                </group>
+                <group id="group3" label="数学工具">
+                    <button id="btnIncrease" onAction="BtnIncrease_Click" label="自加一" showImage="false" />
+                    <button id="btnDecrease" onAction="BtnDecrease_Click" label="自减一" showImage="false" />
+                </group>
+                <group id="group5" label="方程求根">
+                    <button id="btnBisect" onAction="BtnBisect_Click" screentip="平均单元格输入 =(A1+A2)/2，按符号缩小区间" supertip="选中平均单元格，公式应为 =(A1+A2)/2（只引用当前工作表的 A1 地址）。A1、A2 是区间上下界且必须是字面量；其下一行单元格为目标函数值，小于零则把 A1 更新为平均值，大于零则把 A2 更新为平均值。" label="对分法归零" showImage="false" />
+                    <button id="btnSuccessive" onAction="BtnSuccessive_Click" screentip="所选单元格为 =A2-A1，一个为公式，另一个为字面量" supertip="点击按钮会修改字面量值为公式的当前值。如果出错会有消息框提示。" label="代入法归零" showImage="false" />
+                </group>
+                <group id="group4" label="公式">
+                    <button id="deprecatedFormulae" onAction="deprecatedFormulae_Click" label="不支持的公式" showImage="false" />
+                    <button id="clearName_button" onAction="clearName_button_Click" screentip="清除单元格对名称的引用" label="清除名称" showImage="false" />
+                </group>
+                <group id="group6" label="工作表">
+                    <button id="btn_referencesOfWorksheet" onAction="btn_referencesOfWorksheet_Click" label="工作表引用" showImage="false" tag="工作表输入" />
+                    <button id="btnDeleteRelayCell" onAction="BtnDeleteRelayCell_Click" screentip="删除当前中转单元格：把它的公式内联到所有引用它的公式，再清空该单元格" supertip="当前单元格必须是中转单元格：公式整体是一个一元表达式（字面量、单元格引用、定义名称、函数调用、整体括起来的表达式或数组常量），内联到其他公式后不必加括号、也不改变语义。点击后扫描当前工作簿全部工作表，把公式中引用本单元格的地址替换为本单元格的公式，然后清空本单元格。区域引用包含本单元格、多格数组、合并单元格、公式带顶层运算符（如 A1+B1）时不受理，且不做任何改动。" label="删除中转单元格" showImage="false" />
+                    <button id="btn_dependentsOfWorksheet" onAction="btn_dependentsOfWorksheet_Click" label="工作表依赖" showImage="false" tag="工作表输出" />
+                    <button id="btnMarkCrossSheetRefs" onAction="BtnMarkCrossSheetRefs_Click" screentip="给被其他工作表公式引用的单元格涂上独特颜色（洋红）" supertip="扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某个单元格，就把被引用的单元格背景色涂成洋红。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。" label="标记跨表引用" showImage="false" />
+                </group>
+                <group id="group7" label="发布辅助">
+                    <button id="btnUpdateDefaults" onAction="BtnUpdateDefaults_Click" screentip="直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）" supertip="直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。不生成副本，结果在状态栏提示。" label="更新默认值" showImage="false" />
+                    <button id="btnWrapFunction" onAction="BtnWrapFunction_Click" screentip="把当前单元格的公式包裹为 IFERROR，兜底值取当前计算结果" supertip="选中一个公式单元格，点击后把公式 =函数(...) 包裹为 =IFERROR(函数(...), 当前真值)。兜底值即当前计算结果（.NET &quot;0.##&quot; 格式），包裹后数值不变；接收者无本机函数时也能看到最新结果。非公式、已是 IFERROR、错误值单元格不处理。" label="包裹自定义函数" showImage="false" />
+                </group>
+                <group id="group8" label="SQLite">
+                    <button id="btnSaveToSqlite" onAction="btnSaveToSqlite_Click" screentip="把当前工作簿保存为SQLite数据库（工作簿/工作表/单元格三张表），直接覆盖目标文件" label="工作簿另存为SQLite" showImage="false" />
+                    <button id="btnCreateFromSqlite" onAction="btnCreateFromSqlite_Click" screentip="从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件" label="从SQLite导入工作表" showImage="false" />
+                </group>
+            </tab>
+        </tabs>
+    </ribbon>
+</customUI>

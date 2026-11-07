@@ -1,5 +1,5 @@
 ﻿///工作簿与 SQLite 数据库之间的相互转换
-///数据库结构见 ExcelWorkbookDb 项目的 create_excel_db.sql，共三张表：
+///数据库结构见本解决方案 ExcelWorkbookDb 项目的 create_excel_db.sql，共三张表：
 ///  Workbook  工作簿的名称
 ///  Worksheet 工作表的顺序和名称
 ///  Cell      单元格：所在工作表、行地址、列地址、公式、数字格式
@@ -52,7 +52,6 @@ let private readCells (rg: Range) (rows: int) (cols: int) : (string * string)[,]
                 rg.NumberFormat :?> obj[,]
             with _ -> null
         if isNull rawF || isNull rawN then
-            // 批量读取失败时逐单元格读取公式与数字格式
             for r in 1..rows do
                 for c in 1..cols do
                     let cell = rg.Cells.[r, c] :?> Range
@@ -114,7 +113,6 @@ let saveWorkbookAs (path: string) (wb: Workbook) =
 /// 工作表名与当前工作簿已有表名冲突时自动改名（原名后加 _2、_3 ...）
 /// 返回实际追加的工作表名（按数据库记录顺序）
 let appendSheetsFrom (wb: Workbook) (path: string) : string[] =
-    // 先读取数据库内容
     let data = WorkbookDb.load path
 
     if data.Worksheets.Length = 0 then
@@ -128,7 +126,6 @@ let appendSheetsFrom (wb: Workbook) (path: string) : string[] =
             sheets |> Seq.cast<Worksheet> |> Seq.map (fun ws -> ws.Name))
     data.Worksheets
     |> Array.map (fun ws ->
-        // 追加到尾部：After 取当前最后一张表
         let sheet =
             sheets.Add(Type.Missing, sheets.[sheets.Count], Type.Missing, Type.Missing)
             :?> Worksheet
@@ -139,10 +136,7 @@ let appendSheetsFrom (wb: Workbook) (path: string) : string[] =
         | Some rows ->
             for cell in rows do
                 let excelCell = sheet.Cells.[cell.Row, cell.Col] :?> Range
-                // 先设数字格式再写公式：格式为文本(@)时值按文本保存
                 try excelCell.NumberFormat <- cell.NumberFormat with _ -> ()
                 if not (String.IsNullOrEmpty cell.Formula) then
-                    // 以 Formula2 写回：写入端统一按 US-English 函数名 + 动态数组语法解释，
-                    // 读出的公式（readCells 用 Range.Formula）即为同一英文形式，往返一致
                     Formula2.set excelCell cell.Formula
         name)

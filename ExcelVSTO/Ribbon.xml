@@ -2,7 +2,7 @@
 <customUI onLoad="Ribbon_Load" xmlns="http://schemas.microsoft.com/office/2006/01/customui">
     <ribbon>
         <tabs>
-            <tab idMso="TabAddIns">
+            <tab id="tabExcelVSTO" label="ExcelVSTO" insertAfterMso="TabDeveloper">
                 <group id="group1" label="选择工具">
                     <button id="btnSelectInUsedRange" onAction="BtnSelectInUsedRange_Click" screentip="将整行整列的选择限定在已使用的范围内" label="缩小选择" showImage="false" />
                     <button id="btnSelectArray" onAction="BtnSelectArray_Click" screentip="扩展当前单元格为数组公式的范围" label="选择数组" showImage="false" />

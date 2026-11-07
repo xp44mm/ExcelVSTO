@@ -27,8 +27,9 @@ namespace ExcelVSTO
         private static extern int CreateItemMoniker(string lpszDelim, string lpszObject, out ComTypes.IMoniker ppmk);
 
         /// <summary>
-        /// 把当前 Excel 实例的 5 行关键信息复制到剪贴板：
-        /// 采集时间 / PID / ROT 注册名 / 主窗口 HWND / EXCEL.EXE 路径。
+        /// 「复制当前工作簿」：把定位所需的后台信息（采集时间 / PID / ROT 注册名 /
+        /// 主窗口 HWND / EXCEL.EXE 路径）写入剪贴板，尾部追加当前工作簿的名称、
+        /// 完整路径与活动工作表，供大模型精确定位并访问这个工作簿。
         /// </summary>
         public void BtnCopyInstanceInfo_Click(Office.IRibbonControl control)
         {
@@ -54,11 +55,27 @@ namespace ExcelVSTO
                 sb.AppendLine("ROT : !" + name);
                 sb.AppendLine("HWND : " + hwndHex);
                 sb.AppendLine("EXCEL.EXE : " + exePath);
+
+                Excel.Workbook wb = app.ActiveWorkbook;
+                if (wb == null)
+                {
+                    sb.AppendLine("工作簿 : (无打开的工作簿)");
+                    sb.AppendLine("路径 : (无)");
+                    sb.AppendLine("工作表 : (无)");
+                }
+                else
+                {
+                    Excel.Worksheet ws = app.ActiveSheet as Excel.Worksheet;
+                    sb.AppendLine("工作簿 : " + SafeGet(() => wb.Name));
+                    sb.AppendLine("路径 : " + SafeGet(() => string.IsNullOrEmpty(wb.Path) ? "(未保存)" : wb.FullName));
+                    sb.AppendLine("工作表 : " + (ws == null ? "(非工作表)" : SafeGet(() => ws.Name)));
+                }
+
                 System.Windows.Forms.Clipboard.SetText(sb.ToString());
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "复制实例信息", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "复制当前工作簿", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

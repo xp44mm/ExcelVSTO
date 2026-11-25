@@ -66,7 +66,7 @@ let format
         | _ ->
             let rows = values |> List.map (fun row -> stringify row + ";")
             "[" + nl + String.concat nl rows + nl + "]"
-    header + nl + body + ";;"
+    header + nl + body + ";;\r\n"
 
 /// 将文本写入系统剪贴板；剪贴板被其他程序占用时重试数次。
 let setClipboardText (text: string) : unit =

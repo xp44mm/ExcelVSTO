@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Linq;
 using System.Windows;
 using ExcelNumericalMethods;
@@ -10,73 +6,17 @@ using ExcelWPF;
 
 using Microsoft.Office.Interop.Excel;
 using Office = Microsoft.Office.Core;
-using ComTypes = System.Runtime.InteropServices.ComTypes;
-using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelVSTO
 {
     public partial class Ribbon
     {
-        // 本实例在运行对象表（ROT）中的唯一名字，供外部进程精确绑定。
-        private static string rotName;
-
-        [DllImport("ole32.dll")]
-        private static extern int GetRunningObjectTable(int reserved, out ComTypes.IRunningObjectTable pprot);
-
-        [DllImport("ole32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-        private static extern int CreateItemMoniker(string lpszDelim, string lpszObject, out ComTypes.IMoniker ppmk);
-
         /// <summary>
-        /// 「复制当前工作簿」：把定位所需的后台信息（采集时间 / PID / ROT 注册名 /
-        /// 主窗口 HWND / EXCEL.EXE 路径）写入剪贴板，尾部追加当前工作簿的名称、
-        /// 完整路径与活动工作表，供大模型精确定位并访问这个工作簿。
+        /// 复制当前工作簿信息：C# 只做链接，核心逻辑在 F# 的 WorkbookInfo.copyCurrent 中。
         /// </summary>
         public void BtnCopyActiveWorkbookInfo_Click(Office.IRibbonControl control)
         {
-            try
-            {
-                Excel.Application app = Globals.ThisAddIn.Application;
-
-                int pid;
-                string exePath;
-                using (Process proc = Process.GetCurrentProcess())
-                {
-                    pid = proc.Id;
-                    exePath = SafeGet(() => proc.MainModule.FileName);
-                }
-
-                string name = EnsureRotRegistration(app, pid);
-                long hwnd = GetMainWindowHandle(app);
-                string hwndHex = "0x" + hwnd.ToString("X8", CultureInfo.InvariantCulture);
-
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine("[ExcelVSTO 当前 Excel 实例] 采集时间 " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
-                sb.AppendLine("PID : " + pid);
-                sb.AppendLine("ROT : !" + name);
-                sb.AppendLine("HWND : " + hwndHex);
-                sb.AppendLine("EXCEL.EXE : " + exePath);
-
-                Excel.Workbook wb = app.ActiveWorkbook;
-                if (wb == null)
-                {
-                    sb.AppendLine("工作簿 : (无打开的工作簿)");
-                    sb.AppendLine("路径 : (无)");
-                    sb.AppendLine("工作表 : (无)");
-                }
-                else
-                {
-                    Excel.Worksheet ws = app.ActiveSheet as Excel.Worksheet;
-                    sb.AppendLine("工作簿 : " + SafeGet(() => wb.Name));
-                    sb.AppendLine("路径 : " + SafeGet(() => string.IsNullOrEmpty(wb.Path) ? "(未保存)" : wb.FullName));
-                    sb.AppendLine("工作表 : " + (ws == null ? "(非工作表)" : SafeGet(() => ws.Name)));
-                }
-
-                System.Windows.Forms.Clipboard.SetText(sb.ToString());
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "复制当前工作簿", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            ExcelNumericalMethods.WorkbookInfo.copyCurrent(Globals.ThisAddIn.Application);
         }
 
         public void BtnSelectInUsedRange_Click(Office.IRibbonControl control)
@@ -160,6 +100,33 @@ namespace ExcelVSTO
             {
                 ExcelNumericalMethods.SelectionCopy.copySelection(sel, wb.FullName, sheet.Name);
                 app.StatusBar = "当前选择已经放入剪贴板";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 复制当前单元格：C# 只做链接，核心逻辑在 F# 的 ActiveCellCopy.copyActiveCell 中。
+        /// 没有可复制内容时不改动剪贴板，在状态栏提示。
+        /// </summary>
+        public void BtnCopyActiveCell_Click(Office.IRibbonControl control)
+        {
+            var app = Globals.ThisAddIn.Application;
+            var cell = app.ActiveCell as Range;
+            if (cell == null)
+            {
+                app.StatusBar = "执行了命令但没有内容可复制";
+                return;
+            }
+
+            try
+            {
+                var text = ExcelNumericalMethods.ActiveCellCopy.copyActiveCell(cell);
+                app.StatusBar = string.IsNullOrEmpty(text)
+                    ? "执行了命令但没有内容可复制"
+                    : "当前单元格的值已放入剪贴板";
             }
             catch (Exception ex)
             {
@@ -260,69 +227,7 @@ namespace ExcelVSTO
             }
         }
 
-        public void deprecatedFormulae_Click(Office.IRibbonControl control)
-        {
-            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-            //var result =
-            //    ValidationFormula.validate(wb)
-            //    .Select(tpl => tpl.Item1 + tpl.Item2 + tpl.Item3)
-            //    .ToArray()
-            //    ;
 
-            //if (result.Length == 0)
-            //{
-            //    MessageBox.Show("当前工作簿公式都支持！");
-            //}
-            //else
-            //{
-            //    var text = String.Join(Environment.NewLine, result);
-            //    var dlg = new TextWindow("不支持的公式", text);
-            //    dlg.ShowDialog();
-            //}
-
-        }
-
-        public void clearName_button_Click(Office.IRibbonControl control)
-        {
-            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-
-            //var names = wb.Names
-            //    .Cast<Name>()
-            //    .Where(nm => nm.Visible)
-            //    .Select(nm => new Tuple<string, string>(nm.Name, (string)nm.RefersTo))
-            //    .ToArray()
-            //    ;
-
-            //var cells =
-            //    wb.Worksheets
-            //    .Cast<Worksheet>()
-            //    .SelectMany(wsx =>
-            //        Traversal.getCellsOfWorksheet(wsx)
-            //        .Where(rg => (bool)rg.HasFormula)
-            //        .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
-            //    )
-            //    .ToArray()
-            //    ;
-
-            //var result =
-            //    NameOps.replaceNames(names, cells)
-            //    .Select(tpl => $"Sheets({Quotation.quote(tpl.Item1)}).Range(\"{tpl.Item2}\").Formula = {Quotation.quote(tpl.Item3)}")
-            //    .ToArray()
-            //    ;
-
-            //if (result.Length == 0)
-            //{
-            //    MessageBox.Show("当前工作簿没有使用的名称！");
-            //}
-            //else
-            //{
-            //    var text = String.Join(Environment.NewLine, result);
-            //    var dlg = new TextWindow("清除名称", text);
-            //    dlg.ShowDialog();
-
-            //}
-
-        }
 
         /// <summary>
         /// 工作表引用：把本工作表公式对外部地址（其他工作表 / 其他工作簿）的引用，
@@ -439,40 +344,6 @@ namespace ExcelVSTO
             }
         }
 
-        public void btn_dependentsOfWorksheet_Click(Office.IRibbonControl control)
-        {
-            //var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-            //var ws = Globals.ThisAddIn.Application.ActiveSheet as Worksheet;
-
-            //var cells = wb.Worksheets
-            //    .Cast<Worksheet>()
-            //    .Where(wsx => wsx.Name != ws.Name)
-            //    .SelectMany(wsx =>
-            //        Traversal.getCellsOfWorksheet(wsx)
-            //        .Where(rg => (bool)rg.HasFormula)
-            //        .Select(rg => new Tuple<string, string, string>(wsx.Name, rg.get_Address(), (string)rg.Formula))
-            //    )
-            //    .ToArray();
-
-            //var result =
-            //    WorksheetOps.dependents(ws.Name, cells)
-            //    .Select((tuple) => tuple.Item1 + tuple.Item2 + tuple.Item3)
-            //    .ToArray();
-
-            //if (result.Length == 0)
-            //{
-            //    MessageBox.Show("当前工作表没有引用其他工作表！");
-            //}
-            //else
-            //{
-            //    var text = String.Join(Environment.NewLine, result);
-            //    var dlg = new TextWindow("工作表依赖", text);
-            //    dlg.ShowDialog();
-
-            //}
-
-
-        }
 
         /// <summary>
         /// 标记跨表引用：扫描当前工作簿全部公式，把被本工作表以外的单元格引用的单元格背景色涂成洋红。
@@ -518,71 +389,44 @@ namespace ExcelVSTO
             }
         }
 
-        public void btnSaveToSqlite_Click(Office.IRibbonControl control)
+        /// <summary>
+        /// 恢复默认显示：C# 只做链接，核心逻辑在 F# 的 DisplayDefaults.apply 中。
+        /// </summary>
+        public void BtnRestoreDisplayDefaults_Click(Office.IRibbonControl control)
         {
-            var wb = Globals.ThisAddIn.Application.ActiveWorkbook;
-            if (wb == null)
+            var app = Globals.ThisAddIn.Application;
+            var ws = app.ActiveSheet as Worksheet;
+            if (ws == null)
             {
-                MessageBox.Show("当前没有打开的工作簿！");
+                MessageBox.Show("当前没有活动工作表！");
                 return;
             }
-            var dlg = new Microsoft.Win32.SaveFileDialog
+
+            try
             {
-                Title = "另存为 SQLite 数据库",
-                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
-                DefaultExt = ".db",
-                AddExtension = true,
-                OverwritePrompt = true,
-                InitialDirectory = wb.Path,
-                FileName = System.IO.Path.GetFileNameWithoutExtension(wb.Name) + ".db"
-            };
-            if (dlg.ShowDialog() == true)
+                var result = ExcelNumericalMethods.DisplayDefaults.apply(app, ws);
+                app.StatusBar = $"已恢复默认显示：已将 {result.Item1} 行的行高、{result.Item2} 列的列宽恢复为默认值。";
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    ExcelNumericalMethods.SqliteWorkbook.saveWorkbookAs(dlg.FileName, wb);
-                    MessageBox.Show("工作簿已保存到 SQLite 数据库：\n" + dlg.FileName);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
+                MessageBox.Show(ex.Message, "恢复默认显示", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// 从 SQLite 数据库导入：在当前工作簿尾部追加工作表，不新建工作簿、不保存文件。
-        /// 表名与现有表冲突时自动改名。
+        /// 工作簿另存为 SQLite：C# 只做链接，核心逻辑在 F# 的 SqliteCommands.saveToSqlite 中。
+        /// </summary>
+        public void btnSaveToSqlite_Click(Office.IRibbonControl control)
+        {
+            ExcelNumericalMethods.SqliteCommands.saveToSqlite(Globals.ThisAddIn.Application);
+        }
+
+        /// <summary>
+        /// 从 SQLite 导入工作表：C# 只做链接，核心逻辑在 F# 的 SqliteCommands.createFromSqlite 中。
         /// </summary>
         public void btnCreateFromSqlite_Click(Office.IRibbonControl control)
         {
-            var app = Globals.ThisAddIn.Application;
-            var wb = app.ActiveWorkbook;
-            if (wb == null)
-            {
-                MessageBox.Show("当前没有打开的工作簿！");
-                return;
-            }
-
-            var dlg = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "从 SQLite 数据库导入工作表",
-                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
-                CheckFileExists = true,
-                InitialDirectory = wb.Path
-            };
-            if (dlg.ShowDialog() == true)
-            {
-                try
-                {
-                    var names = ExcelNumericalMethods.SqliteWorkbook.appendSheetsFrom(wb, dlg.FileName);
-                    app.StatusBar = $"已在当前工作簿尾部追加 {names.Length} 张工作表：{string.Join("、", names)}";
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
-            }
+            ExcelNumericalMethods.SqliteCommands.createFromSqlite(Globals.ThisAddIn.Application);
         }
 
         /// <summary>
@@ -753,60 +597,6 @@ namespace ExcelVSTO
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// 把当前 Excel Application 以 !ExcelVSTO.Instance.&lt;PID&gt; 注册到 ROT。
-        /// flag=0 为弱注册：ROT 不持有强引用，Excel 退出后条目自动消失。
-        /// </summary>
-        private static string EnsureRotRegistration(Excel.Application app, int pid)
-        {
-            if (rotName != null)
-            {
-                return rotName;
-            }
-
-            string name = "ExcelVSTO.Instance." + pid.ToString(CultureInfo.InvariantCulture);
-
-            ComTypes.IRunningObjectTable table;
-            int hr = GetRunningObjectTable(0, out table);
-            if (hr < 0) { Marshal.ThrowExceptionForHR(hr); }
-
-            ComTypes.IMoniker moniker;
-            hr = CreateItemMoniker("!", name, out moniker);
-            if (hr < 0) { Marshal.ThrowExceptionForHR(hr); }
-
-            table.Register(0, app, moniker);
-            rotName = name;
-            return name;
-        }
-
-        private static long GetMainWindowHandle(Excel.Application app)
-        {
-            try
-            {
-                return (long)unchecked((uint)Convert.ToInt32(app.Hwnd, CultureInfo.InvariantCulture));
-            }
-            catch
-            {
-                using (Process proc = Process.GetCurrentProcess())
-                {
-                    return proc.MainWindowHandle.ToInt64();
-                }
-            }
-        }
-
-        private static string SafeGet(Func<string> getter)
-        {
-            try
-            {
-                string value = getter();
-                return string.IsNullOrEmpty(value) ? "(无)" : value;
-            }
-            catch
-            {
-                return "(读取失败)";
             }
         }
 

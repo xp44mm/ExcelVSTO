@@ -19,11 +19,15 @@
     <Compile Include="WorksheetOps.fs" />
     <Compile Include="Publishing.fs" />
     <Compile Include="SqliteWorkbook.fs" />
+    <Compile Include="SqliteCommands.fs" />
     <Compile Include="SelectionCopy.fs" />
+    <Compile Include="ActiveCellCopy.fs" />
+    <Compile Include="WorkbookInfo.fs" />
     <Compile Include="TableBorder.fs" />
     <Compile Include="CrossSheetRefs.fs" />
     <Compile Include="WorksheetRefs.fs" />
     <Compile Include="RelayDelete.fs" />
+    <Compile Include="DisplayDefaults.fs" />
   </ItemGroup>
 
   <ItemGroup>

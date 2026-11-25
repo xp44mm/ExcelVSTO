@@ -33,6 +33,7 @@
                     <button id="btn_referencesOfWorksheet" onAction="btn_referencesOfWorksheet_Click" label="工作表引用" showImage="false" tag="工作表输入" />
                     <button id="btn_dependentsOfWorksheet" onAction="btn_dependentsOfWorksheet_Click" label="工作表依赖" showImage="false" tag="工作表输出" />
                     <button id="btnMarkCrossSheetRefs" onAction="BtnMarkCrossSheetRefs_Click" screentip="给被其他工作表公式引用的单元格涂上独特颜色（洋红）" supertip="扫描当前工作簿全部工作表的所有公式，凡是本工作表以外的工作表（含 3D 引用 Sheet1:Sheet3!A1）引用了某个单元格，就把被引用的单元格背景色涂成洋红。只处理工作簿内部的「工作表!地址」引用，外部工作簿引用与名称引用不处理；结果在状态栏提示。" label="标记跨表引用" showImage="false" />
+                    <button id="btnRestoreDisplayDefaults" onAction="BtnRestoreDisplayDefaults_Click" screentip="把当前工作表的显示选项恢复为默认值，并恢复行高为 0、列宽为 0 的隐藏行列" supertip="仅作用于当前工作表：勾选显示行列标题、显示零值、显示分级显示符号、显示网格线（自动色）；取消显示公式、从右到左显示、显示分页符；行高为 0 的行恢复为标准行高，列宽为 0 的列恢复为标准列宽。结果在状态栏提示。" label="恢复默认显示" showImage="false" />
                 </group>
                 <group id="group7" label="DNA6">
                     <button id="btnUpdateDefaults" onAction="BtnUpdateDefaults_Click" screentip="直接在当前工作簿，把兜底值更新为最新计算结果（不生成副本、不弹确认框）" supertip="直接在当前工作簿上位修改：不限函数名，凡 =IFERROR(函数(...), 常量) 结构的公式，把第二个参数（常量兜底值）替换为当前最新真值，公式结构保留并以绿色标记，接收者无本机函数时也能看到最新结果。新旧两种数组公式都处理：多格区域（旧式 CSE 区域、新式溢出区）整块读取、兜底值换成同形数组常数（如 {1,2;3,4}），单格用标量；区域内非主单元格跳过。不生成副本，结果在状态栏提示。" label="更新默认值" showImage="false" />
@@ -43,9 +44,10 @@
                     <button id="btnSaveToSqlite" onAction="btnSaveToSqlite_Click" screentip="把当前工作簿保存为SQLite数据库（工作簿/工作表/单元格三张表），直接覆盖目标文件" label="工作簿另存为SQLite" showImage="false" />
                     <button id="btnCreateFromSqlite" onAction="btnCreateFromSqlite_Click" screentip="从SQLite数据库（三张表：工作簿/工作表/单元格）重建工作表，追加到当前工作簿尾部，不新建文件" label="从SQLite导入工作表" showImage="false" />
                 </group>
-                <group id="group9" label="工作簿">
-                    <button id="btnCopyActiveWorkbookInfo" onAction="BtnCopyActiveWorkbookInfo_Click" screentip="把当前工作簿的定位信息复制到剪贴板" supertip="复制当前工作簿的名称、完整路径与活动工作表，供大模型精确定位并访问这个工作簿。未保存的工作簿标注为「未保存」。" label="复制当前工作簿" showImage="false" />
+                <group id="group9" label="复制信息">
+                    <button id="btnCopyActiveWorkbookInfo" onAction="BtnCopyActiveWorkbookInfo_Click" screentip="把当前工作簿的定位信息复制到剪贴板" supertip="复制当前工作簿的名称、完整路径与活动工作表，供大模型精确定位并访问这个工作簿。未保存的工作簿标注为「未保存」。" label="复制当前工作簿信息" showImage="false" />
                     <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把选择的单元格地址和它的当前值复制到剪贴板" label="复制当前选择的地址" showImage="false" />
+                    <button id="btnCopyActiveCell" onAction="BtnCopyActiveCell_Click" screentip="把当前单元格的简单当前值作为单行纯文本复制到剪贴板" supertip="取当前单元格的当前值（不含公式）；多行文本只复制第一段，其余内容忽略。没有可复制内容时不改动剪贴板，并在状态栏提示。" label="复制当前单元格" showImage="false" />
                 </group>
             </tab>
         </tabs>

@@ -46,7 +46,7 @@
                 </group>
                 <group id="group9" label="复制信息">
                     <button id="btnCopyActiveWorkbookInfo" onAction="BtnCopyActiveWorkbookInfo_Click" screentip="把当前工作簿的定位信息复制到剪贴板" supertip="复制当前工作簿的名称、完整路径与活动工作表，供大模型精确定位并访问这个工作簿。未保存的工作簿标注为「未保存」。" label="复制当前工作簿信息" showImage="false" />
-                    <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把选择的单元格地址和它的当前值复制到剪贴板" label="复制当前选择的地址" showImage="false" />
+                    <button id="btnCopySelection" onAction="BtnCopySelection_Click" screentip="把工作簿文件名和当前选择的地址复制到剪贴板" supertip="复制两行纯文本：工作簿文件名、带工作表名的选择地址（如 'Sheet1'!A1:C3）。不复制当前数值。" label="复制当前选择的地址" showImage="false" />
                     <button id="btnCopyActiveCell" onAction="BtnCopyActiveCell_Click" screentip="把当前单元格的简单当前值作为单行纯文本复制到剪贴板" supertip="取当前单元格的当前值（不含公式）；多行文本只复制第一段，其余内容忽略。没有可复制内容时不改动剪贴板，并在状态栏提示。" label="复制当前单元格" showImage="false" />
                 </group>
             </tab>

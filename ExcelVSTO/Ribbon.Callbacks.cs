@@ -68,7 +68,7 @@ namespace ExcelVSTO
         }
 
         /// <summary>
-        /// 复制选择：把当前选择的区域地址与当前值二维数组复制到剪贴板。
+        /// 复制选择：把当前工作簿文件名与当前选择的区域地址复制到剪贴板。
         /// 格式与核心逻辑在 F# 的 SelectionCopy.copySelection 中实现。
         /// </summary>
         public void BtnCopySelection_Click(Office.IRibbonControl control)

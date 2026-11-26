@@ -8,70 +8,34 @@ open FSharp.xUnit
 type SelectionCopyTest(output : ITestOutputHelper) =
 
     [<Fact>]
-    member this.``format 生成与示例一致的剪贴板文本``() =
-        let values =
-            [ [box "a1"; box "b1"; box "c1"]
-              [box "a2"; box "b2"; box "c2"]
-              [box "a3"; box "b3"; box "c3"] ]
-        let text = SelectionCopy.format @"C:\数据\当前工作簿.xlsx" "Sheet1" "A1:C3" values
+    member this.``format 只输出文件名和工作表地址``() =
+        let text = SelectionCopy.format @"C:\数据\当前工作簿.xlsx" "Sheet1" "A1:C3"
         let expected =
             String.concat Environment.NewLine
-                [ "\"C:\\数据\\当前工作簿.xlsx\""
-                  "'Sheet1'!A1:C3->"
-                  "["
-                  "[\"a1\";\"b1\";\"c1\"];"
-                  "[\"a2\";\"b2\";\"c2\"];"
-                  "[\"a3\";\"b3\";\"c3\"];"
-                  "]" ]
+                [ "\"当前工作簿.xlsx\""
+                  "'Sheet1'!A1:C3" ]
         Should.equal text expected
 
     [<Fact>]
-    member this.``format 混合类型与空单元格保留类型字面量``() =
-        let values = [[box 1.0; box true; box null]]
-        let text = SelectionCopy.format @"C:\w.xlsx" "Sheet1" "A1:C1" values
+    member this.``format 单格地址不输出当前值``() =
+        let text = SelectionCopy.format @"C:\w.xlsx" "2#酸洗线脱硝设备报价" "B7"
         let expected =
             String.concat Environment.NewLine
-                [ "\"C:\\w.xlsx\""
-                  "'Sheet1'!A1:C1->"
-                  "["
-                  "[1.0;true;null];"
-                  "]" ]
+                [ "\"w.xlsx\""
+                  "'2#酸洗线脱硝设备报价'!B7" ]
+        Should.equal text expected
+        Assert.DoesNotContain("->", text)
+
+    [<Fact>]
+    member this.``format 多区域地址原样保留``() =
+        let text = SelectionCopy.format @"C:\w.xlsx" "Sheet1" "A1:B2,C3"
+        let expected =
+            String.concat Environment.NewLine
+                [ "\"w.xlsx\""
+                  "'Sheet1'!A1:B2,C3" ]
         Should.equal text expected
 
     [<Fact>]
-    member this.``format 单格文本简化为标量``() =
-        let values = [[box "除雾器就地压力表"]]
-        let text = SelectionCopy.format @"C:\w.xlsx" "2#酸洗线脱硝设备报价" "B7" values
-        let expected =
-            String.concat Environment.NewLine
-                [ "\"C:\\w.xlsx\""
-                  "'2#酸洗线脱硝设备报价'!B7->"
-                  "\"除雾器就地压力表\"" ]
-        Should.equal text expected
-
-    [<Fact>]
-    member this.``format 单格数值简化为标量``() =
-        let values = [[box 3000.0]]
-        let text = SelectionCopy.format @"C:\w.xlsx" "Sheet1" "I6" values
-        let expected =
-            String.concat Environment.NewLine
-                [ "\"C:\\w.xlsx\""
-                  "'Sheet1'!I6->"
-                  "3000.0" ]
-        Should.equal text expected
-
-    [<Fact>]
-    member this.``format 空选择输出空列表``() =
-        let text = SelectionCopy.format @"C:\w.xlsx" "Sheet1" "A1" []
-        let expected =
-            String.concat Environment.NewLine
-                [ "\"C:\\w.xlsx\""
-                  "'Sheet1'!A1->"
-                  "[]" ]
-        Should.equal text expected
-
-    [<Fact>]
-    member this.``format 工作表名单引号加倍且值内引号转义``() =
-        let text = SelectionCopy.format @"C:\w.xlsx" "O'Brien" "A1:B1" [[box "a\"b"; box "x"]]
-        Assert.Contains("'O''Brien'!A1:B1->", text)
-        Assert.Contains("[\"a\\\"b\";\"x\"];", text)
+    member this.``format 工作表名单引号加倍``() =
+        let text = SelectionCopy.format @"C:\w.xlsx" "O'Brien" "A1:B1"
+        Assert.Contains("'O''Brien'!A1:B1", text)
